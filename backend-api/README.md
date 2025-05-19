@@ -9,8 +9,8 @@ The backend provides endpoints to
 
 The backend also handles rate limiting
 
-Install dependencies `pip install -r requirements.txt`
-Update dependencies `pip freeze > requirements.txt`
+Install dependencies `pip install -r requirements.txt`  
+Update dependencies `pip freeze > requirements.txt`  
 
-Run with `fastapi dev main.py`
-Docs at `{server}/docs`
+Run with `fastapi dev main.py`  
+Docs at `{server}/docs`  

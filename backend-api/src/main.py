@@ -120,7 +120,7 @@ def get_conversation(
     )
 
 
-@app.post("/messages")
+@app.post("/messages", status_code=201)
 def generate_response(
     input: str,
     conversation_id: int,

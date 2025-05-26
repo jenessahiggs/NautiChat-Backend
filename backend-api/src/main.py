@@ -9,7 +9,7 @@ from .models import (
     Conversation,
     Feedback,
 )
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 
 app = FastAPI()
 
@@ -23,7 +23,7 @@ app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 FAKE_USER = UserInDB(
-    id=1,
+    user_id=1,
     username="account1",
     hashed_password="password1",
     onc_token="fakeONCtoken",
@@ -32,7 +32,6 @@ FAKE_USER = UserInDB(
 
 
 def fake_decode_token(_token) -> UserInDB:
-    print(_token)
     return FAKE_USER
 
 
@@ -76,12 +75,15 @@ def get_me(user: Annotated[User, Depends(get_current_user)]) -> User:
 ############################################################
 
 
-@app.post("/conversations")
+@app.post("/conversations", status_code=201)
 def create_conversation(
     current_user: Annotated[User, Depends(get_current_user)],
+    title: Optional[str] = None,
 ) -> Conversation:
     """Create a new conversation"""
-    return Conversation(conversation_id=1, user_id=current_user.id, messages=[])
+    return Conversation(
+        conversation_id=1, user_id=current_user.user_id, title=title, messages=[]
+    )
 
 
 @app.get("/conversations")
@@ -90,8 +92,18 @@ def get_conversations(
 ) -> List[Conversation]:
     """Get a list of the users conversations"""
     return [
-        Conversation(conversation_id=1, user_id=current_user.id, messages=[]),
-        Conversation(conversation_id=2, user_id=current_user.id, messages=[]),
+        Conversation(
+            conversation_id=1,
+            user_id=current_user.user_id,
+            title="Conversation 1",
+            messages=[],
+        ),
+        Conversation(
+            conversation_id=2,
+            user_id=current_user.user_id,
+            title="Conversation 2",
+            messages=[],
+        ),
     ]
 
 
@@ -103,7 +115,7 @@ def get_conversation(
     """Get a conversation"""
     return Conversation(
         conversation_id=conversation_id,
-        user_id=current_user.id,
+        user_id=current_user.user_id,
         messages=[],
     )
 
@@ -116,9 +128,9 @@ def generate_response(
 ) -> Message:
     """Get a response from the LLM"""
     return Message(
-        response_id=1,
+        message_id=1,
         conversation_id=conversation_id,
-        user_id=current_user.id,
+        user_id=current_user.user_id,
         input=input,
         response=f"Response for: {input}",
     )
@@ -131,9 +143,9 @@ def get_message(
 ) -> Message:
     """Get a message"""
     return Message(
-        response_id=message_id,
+        message_id=message_id,
         conversation_id=1,
-        user_id=current_user.id,
+        user_id=current_user.user_id,
         input=f"Input for message {message_id}",
         response=f"Response for message {message_id}",
     )
@@ -147,9 +159,9 @@ def submit_feedback(
 ) -> Message:
     """Submit feedback for a message"""
     return Message(
-        response_id=message_id,
+        message_id=message_id,
         conversation_id=1,
-        user_id=current_user.id,
+        user_id=current_user.user_id,
         input=f"Input for message {message_id}",
         response=f"Response for message {message_id}",
         feedback=feedback,
@@ -163,16 +175,16 @@ def get_all_messages(
     """Get all messages"""
     return [
         Message(
-            response_id=1,
+            message_id=1,
             conversation_id=1,
-            user_id=current_user.id,
+            user_id=current_user.user_id,
             input="Input for message 1",
             response="Response for message 1",
         ),
         Message(
-            response_id=2,
+            message_id=2,
             conversation_id=2,
-            user_id=current_user.id,
+            user_id=current_user.user_id,
             input="Input for message 2",
             response="Response for message 2",
         ),

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Annotated, Optional
+from typing import Annotated, List, Optional
 
 ############################################################
 # Users / authentication
@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 
 # Data safe to return to user
 class User(BaseModel):
-    id: int
+    user_id: int
     username: str
     onc_token: str
     is_admin: bool = False
@@ -36,11 +36,11 @@ class Token(BaseModel):
 
 class Feedback(BaseModel):
     rating: Annotated[int, Field(strict=True, ge=1, le=5)]
-    response: Optional[str] = None
+    comment: Optional[str] = None
 
 
 class Message(BaseModel):
-    response_id: int
+    message_id: int
     conversation_id: int
     user_id: int
     input: str
@@ -52,4 +52,4 @@ class Conversation(BaseModel):
     conversation_id: int
     user_id: int
     title: Optional[str] = None
-    messages: list[Message] = []
+    messages: List[Message] = []

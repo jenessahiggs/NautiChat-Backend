@@ -1,6 +1,6 @@
 from fastapi import Depends, FastAPI
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from models import (
+from .models import (
     CreateUserRequest,
     Token,
     User,

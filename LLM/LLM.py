@@ -23,16 +23,6 @@ def get_documents(question):
   return df
 
 
-async def get_temperature(location: str):
-    # This is a mock tool/function. In a real scenario, you would call a weather API.
-    temperatures = {"New York": "22°C", "London": "18°C", "Tokyo": "26°C", "Sydney": "20°C"}
-    return temperatures.get(location, "Temperature data not available")
-
-async def get_weather_condition(location: str):
-    # This is a mock tool/function. In a real scenario, you would call a weather API.
-    conditions = {"New York": "Sunny", "London": "Rainy", "Tokyo": "Cloudy", "Sydney": "Clear"}
-    return conditions.get(location, "Weather condition data not available")
-
 async def get_properties_at_cambridge_bay():
     """Get a list of properties of data available at Cambridge Bay
         Returns a list of dictionaries turned into a string.
@@ -109,40 +99,6 @@ async def run_conversation(user_prompt):
     # Define the available tools (i.e. functions) for our model to use
     tools = [
     {
-        "type": "function",
-        "function": {
-            "name": "get_temperature",
-            "description": "Get the temperature for a given location",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "The name of the city",
-                    }
-                },
-                "required": ["location"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_weather_condition",
-            "description": "Get the weather condition for a given location",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "The name of the city",
-                    }
-                },
-                "required": ["location"],
-            },
-        },
-    },
-    {
       'type': 'function',
       'function': {
             'name': 'get_properties_at_cambridge_bay',
@@ -191,8 +147,6 @@ async def run_conversation(user_prompt):
         # Define the available tools that can be called by the LLM
         available_functions = {
             "get_properties_at_cambridge_bay": get_properties_at_cambridge_bay,
-            "get_weather_condition": get_weather_condition,
-            "get_temperature": get_temperature,
             "get_daily_sea_temperature_stats_cambridge_bay": get_daily_sea_temperature_stats_cambridge_bay,
         }
         # Add the LLM's response to the conversation

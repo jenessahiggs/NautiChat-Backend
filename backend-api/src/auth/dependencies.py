@@ -1,5 +1,5 @@
 from fastapi.security import OAuth2PasswordBearer
-from models import UserInDB
+from .schemas import UserInDB
 from typing import Annotated
 from fastapi import Depends
 

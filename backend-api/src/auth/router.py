@@ -1,9 +1,9 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from dependencies import get_current_user
+from .dependencies import get_current_user
 from fastapi.security import OAuth2PasswordRequestForm
-from models import CreateUserRequest, Token, User
+from .schemas import CreateUserRequest, Token, User
 
 
 router = APIRouter()

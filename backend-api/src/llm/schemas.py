@@ -1,14 +1,9 @@
 from pydantic import BaseModel, Field
 from typing import Annotated, List, Optional
 
-############################################################
-# LLM
-############################################################
-
 class Feedback(BaseModel):
     rating: Annotated[int, Field(strict=True, ge=1, le=5)]
     comment: Optional[str] = None
-
 
 class Message(BaseModel):
     message_id: int

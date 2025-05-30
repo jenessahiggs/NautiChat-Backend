@@ -12,7 +12,6 @@ from .schemas import (
 
 router = APIRouter()
 
-
 @router.post("/conversations", status_code=201)
 def create_conversation(
     current_user: Annotated[User, Depends(get_current_user)],

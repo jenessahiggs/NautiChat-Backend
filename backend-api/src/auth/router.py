@@ -1,15 +1,15 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from .dependencies import get_current_user
 from fastapi.security import OAuth2PasswordRequestForm
-from .schemas import CreateUserRequest, Token, User
 
+from .dependencies import get_current_user
+from .schemas import CreateUserRequest, Token, User
 
 router = APIRouter()
 
 
-@router.post("/auth/login")
+@router.post("/login")
 def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
     """Login and return a token"""
     # Validate the user and return a token
@@ -17,7 +17,7 @@ def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
     return Token(access_token=form_data.username, token_type="bearer")
 
 
-@router.post("/auth/register")
+@router.post("/register")
 def register_user(user: CreateUserRequest) -> Token:
     """Register a new user"""
     # Save the user to the database
@@ -25,7 +25,7 @@ def register_user(user: CreateUserRequest) -> Token:
     return Token(access_token=user.username, token_type="bearer")
 
 
-@router.get("/auth/me")
+@router.get("/me")
 def get_me(user: Annotated[User, Depends(get_current_user)]) -> User:
     """Get the current user"""
     # get_current_user is called automatically because of the Depends()

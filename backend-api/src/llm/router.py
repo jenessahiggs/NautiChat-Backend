@@ -1,6 +1,10 @@
-# Contains all endpoints
+from fastapi import APIRouter, Depends
+from src.auth.schemas import User
+from src.auth.dependencies import get_current_user
 
-from schemas import (
+from typing import List, Annotated, Optional
+
+from .schemas import (
     Conversation,
     Message,
     Feedback
@@ -9,7 +13,7 @@ from schemas import (
 router = APIRouter()
 
 
-@app.post("/conversations", status_code=201)
+@router.post("/conversations", status_code=201)
 def create_conversation(
     current_user: Annotated[User, Depends(get_current_user)],
     title: Optional[str] = None,
@@ -20,7 +24,7 @@ def create_conversation(
     )
 
 
-@app.get("/conversations")
+@router.get("/conversations")
 def get_conversations(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> List[Conversation]:
@@ -41,7 +45,7 @@ def get_conversations(
     ]
 
 
-@app.get("/conversations/{conversation_id}")
+@router.get("/conversations/{conversation_id}")
 def get_conversation(
     conversation_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -54,7 +58,7 @@ def get_conversation(
     )
 
 
-@app.post("/messages", status_code=201)
+@router.post("/messages", status_code=201)
 def generate_response(
     input: str,
     conversation_id: int,
@@ -70,7 +74,7 @@ def generate_response(
     )
 
 
-@app.get("/messages/{message_id}")
+@router.get("/messages/{message_id}")
 def get_message(
     message_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -85,7 +89,7 @@ def get_message(
     )
 
 
-@app.post("/messages/{message_id}/feedback")
+@router.post("/messages/{message_id}/feedback")
 def submit_feedback(
     message_id: int,
     feedback: Feedback,

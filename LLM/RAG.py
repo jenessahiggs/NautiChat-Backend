@@ -38,7 +38,7 @@ class RAG:
         )
         # Qdrant Retriever
         print("Creating Qdrant retriever...")
-        self.retriever = qdrant.as_retriever(search_kwargs={"k": 3})
+        self.retriever = self.qdrant.as_retriever(search_kwargs={"k": 3})
         # Reranker (from RerankerNoGroq notebook)
         print("Creating CrossEncoder model...")
         self.model = HuggingFaceCrossEncoder(model_name="BAAI/bge-reranker-base")
@@ -49,26 +49,7 @@ class RAG:
         )
 
     def get_documents(self, question: str):
-        compression_documents = self.compression_retriever.invoke(question)
+        compression_documents = self.compression_retriever.invoke(question) #If no data found needs to still handle empty list.
         compression_contents = [doc.page_content for doc in compression_documents]
         df = pd.DataFrame({"contents": compression_contents})
         return df
-
-    def create_vector_store(self, data: pd.DataFrame):
-        """Create a vector store from a DataFrame."""
-        vector_store = Qdrant.from_documents(
-            documents=data.to_dict(orient="records"),
-            embedding=self.embeddings,
-            collection_name=self.collection_name,
-            client=self.qdrant_client,
-        )
-        return vector_store
-
-    def get_retriever(self, top_k: int = 5):
-        """Get a retriever with compression."""
-        cross_encoder = HuggingFaceCrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
-        reranker = CrossEncoderReranker(cross_encoder=cross_encoder)
-        retriever = ContextualCompressionRetriever(
-            base_retriever=Qdrant(self.qdrant_client, self.collection_name), document_compressor=reranker, k=top_k
-        )
-        return retriever

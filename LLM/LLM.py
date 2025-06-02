@@ -179,10 +179,14 @@ async def main():
         qdrant_api_key=os.getenv("QDRANT_API_KEY"),
     )
     print("RAG instance created successfully.")
-
-    user_prompt = "what is the temp at cambridge bay?"
-    prompt = LLMPrompt(user_prompt)
-    response = await run_conversation(user_prompt, RAG_instance)
+    user_prompt = "what properties are available at Cambridge Bay?"
+    while user_prompt not in ["", "exit"]:
+        response = await run_conversation(user_prompt, RAG_instance)
+        print(response)
+        user_prompt = input("Enter your next question (or 'exit' to quit): ")
+    # user_prompt = "what is the temp at cambridge bay?"
+    # prompt = LLMPrompt(user_prompt)
+    # response = await run_conversation(user_prompt, RAG_instance)
     print(response)
 
 

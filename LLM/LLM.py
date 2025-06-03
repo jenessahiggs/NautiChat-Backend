@@ -17,10 +17,13 @@ from langchain.retrievers.document_compressors import CrossEncoderReranker
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from pathlib import Path
 
+# Load API key and location code from .env
 env_path = Path(__file__).resolve().parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 ONC_TOKEN = os.getenv("ONC_TOKEN")
-CAMBRIDGE_LOCATION_CODE = os.getenv("CAMBRIDGE_LOCATION_CODE") # change for a different location
+CAMBRIDGE_LOCATION_CODE = os.getenv("CAMBRIDGE_LOCATION_CODE") # Change for a different location
+
+# Initialize Groq client using Llama 3.3
 model = "llama-3.3-70b-versatile"
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
@@ -34,7 +37,6 @@ def get_documents(user_prompt):
   compression_contents = [doc.page_content for doc in compression_documents]
   df = pd.DataFrame({'contents': compression_contents})
   return df
-
 
 async def get_properties_at_cambridge_bay():
     """Get a list of properties of data available at Cambridge Bay
@@ -71,7 +73,7 @@ async def get_daily_sea_temperature_stats_cambridge_bay(day_str: str):
     date_to_str: str = date_to.strftime("%Y-%m-%d") # Convert back to string
 
     async with httpx.AsyncClient() as client:
-        # Get the data from ONC API
+        # Get data from ONC API
         temp_api = f"https://data.oceannetworks.ca/api/scalardata/location?locationCode={CAMBRIDGE_LOCATION_CODE}&deviceCategoryCode=CTD&propertyCode=seawatertemperature&dateFrom={day_str}&dateTo={date_to_str}&rowLimit=80000&outputFormat=Object&resamplePeriod=86400&token={ONC_TOKEN}"
         response = await client.get(temp_api)
         response.raise_for_status() # Error handling
@@ -90,8 +92,8 @@ async def get_daily_sea_temperature_stats_cambridge_bay(day_str: str):
         "daily_avg": round(data["value"], 2),
     })
 
+# Construct conversation that includes system prompt, user prompt, and results from vector DB
 async def run_conversation(user_prompt):
-    # Initialize the conversation with system and user messages
     CurrentDate = datetime.now().strftime("%Y-%m-%d")
     messages=[
         {
@@ -108,7 +110,8 @@ async def run_conversation(user_prompt):
         "content": ""#Where Data retrieval from Vector DB will occur and be stored
         }
     ]
-    # Define the available tools (i.e. functions) for our model to use
+
+    # Define available tools (i.e. functions) for model to use
     tools = [
     {
       'type': 'function',
@@ -142,26 +145,27 @@ async def run_conversation(user_prompt):
 ]
     vectorDBResponse = get_documents(user_prompt)
     messages[2] = ({"role": "system", "content": vectorDBResponse.to_string()})
-    # Make the initial API call to Groq
+    # Make initial API call to Groq
     response = client.chat.completions.create(
         model=model, # LLM to use
         messages=messages, # Conversation history
         stream=False,
-        tools=tools, # Available tools (i.e. functions) for our LLM to use
-        tool_choice="auto", # Let our LLM decide when to use tools
-        max_completion_tokens=4096, # Maximum number of tokens to allow in our response
-        temperature=0.5 #A temperature of 1=default balance between randomnes and confidence. Less than 1 is less randomness, Greater than is more randomness
+        tools=tools, # Available tools (i.e. functions) for LLM to use
+        tool_choice="auto", # Let LLM decide when to use tools
+        max_completion_tokens=4096, # Maximum number of tokens to allow in response
+        temperature=0.5 #A temperature of 1=default balance between randomness and confidence. Less than 1 is less randomness, Greater than is more randomness
     )
+
     # Extract the response and any tool call responses
     response_message = response.choices[0].message
     tool_calls = response_message.tool_calls
     if tool_calls:
-        # Define the available tools that can be called by the LLM
+        # Define available tools that can be called by the LLM
         available_functions = {
             "get_properties_at_cambridge_bay": get_properties_at_cambridge_bay,
             "get_daily_sea_temperature_stats_cambridge_bay": get_daily_sea_temperature_stats_cambridge_bay,
         }
-        # Add the LLM's response to the conversation
+        # Add LLM's response to the conversation
         messages.append(response_message)
 
         # Process each tool call
@@ -188,6 +192,7 @@ async def run_conversation(user_prompt):
                 }
             )
             #pprint.pprint(messages)
+
         # Make a second API call with the updated conversation
         second_response = client.chat.completions.create(
             model=model,
@@ -196,8 +201,9 @@ async def run_conversation(user_prompt):
             tool_choice="auto",
             max_completion_tokens=4096,
             temperature=0.5
-        )#Calls LLM again with all the data from all functions
+        )# Calls LLM again with all the data from all functions
         # Return the final response
+
         return second_response.choices[0].message.content
     else:
         return response_message.content
@@ -216,10 +222,8 @@ async def main():
     # client = Groq(api_key=groq_api_key)
     # model = "llama-3.3-70b-versatile"
 
-    
-
+    # Load ONC dataset and convert into Document objects for vector embedding
     df = load_dataset('gsnap88/ONCKnowledgeBase', split='train').to_pandas()
-
 
     documents = []
     for index, row in df.iterrows():
@@ -227,9 +231,9 @@ async def main():
         document = Document(page_content=text)
         documents.append(document)
 
-
+    # Embed documents
     embeddings = HuggingFaceEmbeddings(model_name  = "BAAI/bge-base-en-v1.5")
-
+    # Store embedded documents in a Qdrant vector DB
     qdrant = Qdrant.from_documents(
     documents,
     embeddings,
@@ -237,13 +241,16 @@ async def main():
     collection_name="reranker",
     )
 
+    # Wrap reranker in retriever - two-stage retrieval process
     retriever = qdrant.as_retriever(search_kwargs = {'k':3})
     model = HuggingFaceCrossEncoder(model_name="BAAI/bge-reranker-base")
     compressor = CrossEncoderReranker(model=model, top_n=3)
     compression_retriever = ContextualCompressionRetriever(
         base_compressor=compressor, base_retriever=retriever
     )
+
     user_prompt = "what is the temp at cambridge bay?"
+    # Combine question with retriever for downstream use
     prompt = LLMPrompt(user_prompt, compression_retriever)
     response = await run_conversation(prompt)
     print(response)

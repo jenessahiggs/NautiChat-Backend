@@ -16,7 +16,6 @@ CAMBRIDGE_LOCATION_CODE = os.getenv("CAMBRIDGE_LOCATION_CODE")  # change for a d
 model = "llama-3.3-70b-versatile"
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-
 async def get_properties_at_cambridge_bay():
     """Get a list of properties of data available at Cambridge Bay
     Returns a list of dictionaries turned into a string.
@@ -52,7 +51,7 @@ async def get_daily_sea_temperature_stats_cambridge_bay(day_str: str):
     date_to_str: str = date_to.strftime("%Y-%m-%d")  # Convert back to string
 
     async with httpx.AsyncClient() as client:
-        # Get the data from ONC API
+        # Get data from ONC API
         temp_api = f"https://data.oceannetworks.ca/api/scalardata/location?locationCode={CAMBRIDGE_LOCATION_CODE}&deviceCategoryCode=CTD&propertyCode=seawatertemperature&dateFrom={day_str}&dateTo={date_to_str}&rowLimit=80000&outputFormat=Object&resamplePeriod=86400&token={ONC_TOKEN}"
         response = await client.get(temp_api)
         response.raise_for_status()  # Error handling
@@ -73,7 +72,6 @@ async def get_daily_sea_temperature_stats_cambridge_bay(day_str: str):
         }
     )
 
-
 async def run_conversation(user_prompt, RAG_instance: RAG):
     # Initialize the conversation with system and user messages
     CurrentDate = datetime.now().strftime("%Y-%m-%d")
@@ -90,7 +88,8 @@ async def run_conversation(user_prompt, RAG_instance: RAG):
         },
         {"role": "system", "content": ""},  # Where Data retrieval from Vector DB will occur and be stored
     ]
-    # Define the available tools (i.e. functions) for our model to use
+
+    # Define available tools (i.e. functions) for model to use
     tools = [
         {
             "type": "function",
@@ -125,6 +124,7 @@ async def run_conversation(user_prompt, RAG_instance: RAG):
     vectorDBResponse = RAG_instance.get_documents(user_prompt)
     messages[2] = {"role": "system", "content": vectorDBResponse.to_string()}
     # Make the initial API call to Groq
+    
     response = client.chat.completions.create(
         model=model,  # LLM to use
         messages=messages,  # Conversation history
@@ -134,18 +134,19 @@ async def run_conversation(user_prompt, RAG_instance: RAG):
         max_completion_tokens=4096,  # Maximum number of tokens to allow in our response
         temperature=0.5,  # A temperature of 1=default balance between randomnes and confidence. Less than 1 is less randomness, Greater than is more randomness
     )
+
     # Extract the response and any tool call responses
     response_message = response.choices[0].message
     #print("Response received from Groq API.")
     #print("Response message:", response_message)
     tool_calls = response_message.tool_calls
     if tool_calls:
-        # Define the available tools that can be called by the LLM
+        # Define available tools that can be called by the LLM
         available_functions = {
             "get_properties_at_cambridge_bay": get_properties_at_cambridge_bay,
             "get_daily_sea_temperature_stats_cambridge_bay": get_daily_sea_temperature_stats_cambridge_bay,
         }
-        # Add the LLM's response to the conversation
+        # Add LLM's response to the conversation
         messages.append(response_message)
 
         # Process each tool call
@@ -175,7 +176,6 @@ async def run_conversation(user_prompt, RAG_instance: RAG):
         return second_response.choices[0].message.content
     else:
         return response_message.content
-
 
 async def main():
 

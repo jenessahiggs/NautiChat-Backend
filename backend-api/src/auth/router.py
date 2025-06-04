@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from . import config, service
 from .dependencies import get_current_user, get_settings
-from .schemas import CreateUserRequest, Token, User
+from .schemas import CreateUserRequest, Token, User, UserInDB
 
 router = APIRouter()
 
@@ -30,6 +30,15 @@ def get_me(user: Annotated[User, Depends(get_current_user)]) -> User:
     """Get the current user"""
     # get_current_user is called automatically because of the Depends()
     return user
+
+
+@router.put("/me/onc-token")
+def update_onc_token(
+    user: Annotated[UserInDB, Depends(get_current_user)],
+    onc_token: str,
+) -> User:
+    """Update the ONC token for the current user"""
+    return service.update_onc_token(user, onc_token)
 
 
 # @router.get("/db")

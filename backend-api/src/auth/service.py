@@ -142,3 +142,13 @@ def login_user(
     )
 
     return Token(access_token=token, token_type="bearer")
+
+
+def update_onc_token(
+    user: UserInDB,
+    onc_token: str,
+) -> UserInDB:
+    """Update the ONC token for the given user"""
+    user.onc_token = onc_token
+    FAKE_USERS_DB[user.username] = user.model_dump()
+    return user

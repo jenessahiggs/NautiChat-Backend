@@ -81,7 +81,7 @@ async def run_conversation(user_prompt, RAG_instance: RAG):
         {
             "role": "system",
             "content": f"You are an assistant for Oceans Network Canada that helps users access ONCs database via natural language.  \
-            You can choose to use the given tools to obtain the data needed to answer the prompt and provide the results if that is required. \
+            You can choose to use the given tools to obtain the data needed to answer the prompt and provide the results if that is required. Dont provide the results in JSON format. Make it readable! \
             The current day is: {CurrentDate}.",
         },
         {
@@ -121,7 +121,7 @@ async def run_conversation(user_prompt, RAG_instance: RAG):
             },
         },
     ]
-    print("Tools defined successfully.")
+    #print("Tools defined successfully.")
     vectorDBResponse = RAG_instance.get_documents(user_prompt)
     messages[2] = {"role": "system", "content": vectorDBResponse.to_string()}
     # Make the initial API call to Groq
@@ -136,6 +136,8 @@ async def run_conversation(user_prompt, RAG_instance: RAG):
     )
     # Extract the response and any tool call responses
     response_message = response.choices[0].message
+    #print("Response received from Groq API.")
+    #print("Response message:", response_message)
     tool_calls = response_message.tool_calls
     if tool_calls:
         # Define the available tools that can be called by the LLM
@@ -147,6 +149,8 @@ async def run_conversation(user_prompt, RAG_instance: RAG):
         messages.append(response_message)
 
         # Process each tool call
+        #print("Processing tool calls...")
+        #print("Tool calls:", tool_calls)
         for tool_call in tool_calls:
             function_name = tool_call.function.name
             function_to_call = available_functions[function_name]
@@ -163,9 +167,11 @@ async def run_conversation(user_prompt, RAG_instance: RAG):
             )
         # Make a second API call with the updated conversation
         second_response = client.chat.completions.create(
-            model=model, messages=messages, tools=tools, tool_choice="auto", max_completion_tokens=4096, temperature=0.5
+            model=model, messages=messages, stream=False, tools=tools, tool_choice="auto", max_completion_tokens=4096, temperature=0.5
         )  # Calls LLM again with all the data from all functions
         # Return the final response
+        #print("Second response received from Groq API.")
+        #print("Second response message:", second_response.choices)
         return second_response.choices[0].message.content
     else:
         return response_message.content
@@ -173,10 +179,14 @@ async def run_conversation(user_prompt, RAG_instance: RAG):
 
 async def main():
 
+    qdrant_url=os.getenv("QDRANT_URL")
+    collection_name=os.getenv("QDRANT_COLLECTION_NAME")
+    qdrant_api_key=os.getenv("QDRANT_API_KEY")
+
     RAG_instance = RAG(
-        qdrant_url=os.getenv("QDRANT_URL"),
-        collection_name=os.getenv("QDRANT_COLLECTION_NAME"),
-        qdrant_api_key=os.getenv("QDRANT_API_KEY"),
+        qdrant_url=qdrant_url,
+        collection_name=collection_name,
+        qdrant_api_key=qdrant_api_key
     )
     print("RAG instance created successfully.")
     user_prompt = "what properties are available at Cambridge Bay?"

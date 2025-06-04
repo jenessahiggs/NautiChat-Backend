@@ -3,26 +3,26 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
-from .dependencies import get_current_user
+from . import config, service
+from .dependencies import get_current_user, get_settings
 from .schemas import CreateUserRequest, Token, User
 
 router = APIRouter()
 
 
 @router.post("/login")
-def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
-    """Login and return a token"""
-    # Validate the user and return a token
-    # For now just return a fake token every time
-    return Token(access_token=form_data.username, token_type="bearer")
+def login(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    settings: Annotated[config.Settings, Depends(get_settings)],
+) -> Token:
+    return service.login_user(form_data, settings)
 
 
 @router.post("/register")
-def register_user(user: CreateUserRequest) -> Token:
-    """Register a new user"""
-    # Save the user to the database
-    # Do nothing right now because we allow all logins anyways
-    return Token(access_token=user.username, token_type="bearer")
+def register_user(
+    user: CreateUserRequest, settings: Annotated[config.Settings, Depends(get_settings)]
+) -> Token:
+    return service.register_user(user, settings)
 
 
 @router.get("/me")

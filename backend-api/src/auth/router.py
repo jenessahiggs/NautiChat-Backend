@@ -30,3 +30,17 @@ def get_me(user: Annotated[User, Depends(get_current_user)]) -> User:
     """Get the current user"""
     # get_current_user is called automatically because of the Depends()
     return user
+
+
+# @router.get("/db")
+# def get_db_users() -> list[UserInDB]:
+#     """Get all users from the fake database"""
+#     return list(service.FAKE_USERS_DB.values())
+
+
+# @router.get("/settings")
+# def get_settings_list(
+#     settings: Annotated[config.Settings, Depends(get_settings)],
+# ) -> config.Settings:
+#     """Get the application settings"""
+#     return settings

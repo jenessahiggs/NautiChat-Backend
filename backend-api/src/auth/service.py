@@ -39,7 +39,9 @@ FAKE_USER2 = UserInDB(
 )
 
 FAKE_USERS_DB = {}
-FAKE_USERS_DB.update({"user1": FAKE_USER1, "user2": FAKE_USER2})
+FAKE_USERS_DB.update(
+    {"user1": FAKE_USER1.model_dump(), "user2": FAKE_USER2.model_dump()}
+)
 
 
 def get_user(db, username: str):
@@ -62,14 +64,29 @@ def create_access_token(
     return encoded_jwt
 
 
-def register_user(user: CreateUserRequest, settings: config.Settings) -> Token:
+def register_user(user_register: CreateUserRequest, settings: config.Settings) -> Token:
     """Register a new user"""
 
-    # TODO: check that the user does not already exist
-    # TODO: save the user to the database
+    # check that the user does not already exist
+    existing_user = get_user(FAKE_USERS_DB, user_register.username)
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already exists",
+        )
+
+    # create a new user
+    new_user = UserInDB(
+        user_id=len(FAKE_USERS_DB) + 1,
+        username=user_register.username,
+        onc_token=user_register.onc_token,
+        hashed_password=get_password_hash(user_register.password),
+        is_admin=False,
+    )
+    FAKE_USERS_DB[new_user.username] = new_user.model_dump()
 
     token = create_access_token(
-        user.username, timedelta(hours=settings.ACCESS_TOKEN_EXPIRE_HOURS), settings
+        new_user.username, timedelta(hours=settings.ACCESS_TOKEN_EXPIRE_HOURS), settings
     )
     return Token(access_token=token, token_type="bearer")
 
@@ -103,11 +120,23 @@ def login_user(
     settings: config.Settings,
 ) -> Token:
     """Login and return a token"""
+    invalid_credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Incorrect username or password",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
-    # TODO: check that the user actually exists
+    # check that the user actually exists
+    matched_user = get_user(FAKE_USERS_DB, form_data.username)
+    if not matched_user:
+        raise invalid_credentials_exception
+    # check that the password is correct
+    if not verify_password(form_data.password, matched_user.hashed_password):
+        raise invalid_credentials_exception
 
+    # create a new token
     token = create_access_token(
-        form_data.username,
+        matched_user.username,
         timedelta(hours=settings.ACCESS_TOKEN_EXPIRE_HOURS),
         settings,
     )

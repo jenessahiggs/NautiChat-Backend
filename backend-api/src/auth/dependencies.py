@@ -10,11 +10,11 @@ from .schemas import UserInDB
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
-@lru_cache()
-def get_settings():
+@lru_cache
+def get_settings() -> config.Settings:
     # pylance doesn't understand that the Settings fields are loaded at runtime from the .env file,
     # so use type: ignore to suppress the editor error
-    return config.Settings()  # type: ignore
+    return config.Settings()  # type: ignore[call-arg]
 
 
 def get_current_user(

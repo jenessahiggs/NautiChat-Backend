@@ -55,10 +55,9 @@ async def get_daily_sea_temperature_stats_cambridge_bay(day_str: str):
     # Parse into datetime object to add 1 day (accounts for 24-hour period)
     date_to = datetime.strptime(day_str, "%Y-%m-%d") + timedelta(days=1)
     date_to_str: str = date_to.strftime("%Y-%m-%d")  # Convert back to string
-    print(day_str)
 
     async with httpx.AsyncClient() as client:
-        # Get data from ONC API
+        # Get the data from ONC API
         temp_api = f"https://data.oceannetworks.ca/api/scalardata/location?locationCode={CAMBRIDGE_LOCATION_CODE}&deviceCategoryCode=CTD&propertyCode=seawatertemperature&dateFrom={day_str}&dateTo={date_to_str}&rowLimit=80000&outputFormat=Object&resamplePeriod=86400&token={ONC_TOKEN}"
         response = await client.get(temp_api)
         response.raise_for_status()  # Error handling

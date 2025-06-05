@@ -2,58 +2,58 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]   
-  pull_request:          
+    branches: [ main ]
+  pull_request:
 
 env:
-  IMAGE: milesssssss/nautichat-backend  
+  IMAGE: milesssssss/nautichat-backend
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # python setup with built‑in pip caching
-    - uses: actions/setup-python@v5 
-      with:
-        python-version: '3.12'
-        cache: 'pip'    
+      # Python setup with built‑in pip caching
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
 
-    - name: Install deps
-      run: |
-        pip install -r requirements.txt
-        pip install pytest
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
 
-    - name: Run pytest
-      run: pytest -q
+      - name: Run pytest
+        run: python -m pytest -q
 
   build:
     needs: test
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - uses: docker/setup-buildx-action@v3       :contentReference[oaicite:1]{index=1}
-
-    - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
 
       # Log in to Docker Hub
-    - uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_HUB_USERNAME }}
-        password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}  :contentReference[oaicite:2]{index=2}
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
       # Build & push
-    - uses: docker/build-push-action@v5
-      with:
-        context: .                       # repo root
-        push: true
-        platforms: linux/amd64,linux/arm64   # builds both arches
-        tags: |
-          ${{ env.IMAGE }}:latest
-          ${{ env.IMAGE }}:${{ github.sha }}   # immutable tag per commit
-        cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
-        cache-to:   type=registry,ref=${{ env.IMAGE }}:buildcache,mode=max
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
+          cache-to:   type=registry,ref=${{ env.IMAGE }}:buildcache,mode=max

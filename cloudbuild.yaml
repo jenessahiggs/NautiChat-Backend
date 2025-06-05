@@ -26,6 +26,8 @@ steps:
      '--port=8080',
      '--allow-unauthenticated',
      '--quiet']
+  options:
+    logging: CLOUD_LOGGING_ONLY
 
 images:
 - '${_IMAGE_NAME}:$SHORT_SHA'

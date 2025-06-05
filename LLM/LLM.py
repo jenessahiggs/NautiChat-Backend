@@ -137,11 +137,6 @@ async def main():
         response = await run_conversation(user_prompt, RAG_instance)
         print(response)
         user_prompt = input("Enter your next question (or 'exit' to quit): ")
-    # user_prompt = "what is the temp at cambridge bay?"
-    # prompt = LLMPrompt(user_prompt)
-    # response = await run_conversation(user_prompt, RAG_instance)
-    if user_prompt not in ["", "exit"]:
-        print(response)
 
 
 if __name__ == "__main__":

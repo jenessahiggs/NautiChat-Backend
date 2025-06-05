@@ -41,6 +41,8 @@ def update_onc_token(
     return service.update_onc_token(user, onc_token)
 
 
+# Routes for testing purposes. Should be removed later
+
 # @router.get("/db")
 # def get_db_users() -> list[UserInDB]:
 #     """Get all users from the fake database"""

@@ -36,3 +36,6 @@ availableSecrets:
     env: DH_USER
   - versionName: projects/$PROJECT_ID/secrets/dockerhub-pass/versions/latest
     env: DH_PASS
+
+options:
+  logging: CLOUD_LOGGING_ONLY

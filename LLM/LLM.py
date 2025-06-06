@@ -181,7 +181,7 @@ async def run_conversation(user_prompt, RAG_instance: RAG):
 
 async def main():
 
-    RAG_instance = RAG()
+    RAG_instance = RAG(env)
     print("RAG instance created successfully.")
     user_prompt = "what properties are available at Cambridge Bay?"
     while user_prompt not in ["", "exit"]:

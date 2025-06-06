@@ -181,9 +181,7 @@ async def run_conversation(user_prompt, RAG_instance: RAG):
 
 async def main():
 
-    RAG_instance = RAG(qdrant_url=env.get_qdrant_url(), 
-                       collection_name=env.get_collection_name(), 
-                       qdrant_api_key=env.get_qdrant_api_key())
+    RAG_instance = RAG()
     print("RAG instance created successfully.")
     user_prompt = "what properties are available at Cambridge Bay?"
     while user_prompt not in ["", "exit"]:

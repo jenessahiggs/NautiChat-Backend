@@ -9,8 +9,6 @@ from qdrant_client.http.models import VectorParams, Distance
 import pandas as pd
 from Environment import Environment
 
-env = Environment()
-
 
 class JinaEmbeddings(Embeddings):
     def __init__(self, task="retrieval.document"):
@@ -27,15 +25,15 @@ class JinaEmbeddings(Embeddings):
 
 
 class RAG:
-    def __init__(self, qdrant_url: str, collection_name: str, qdrant_api_key: str):
+    def __init__(self, env: Environment):
         self.qdrant_client = QdrantClient(url=env.get_qdrant_url(), api_key=env.get_qdrant_api_key())
-        self.collection_name = collection_name
+        self.collection_name = env.get_collection_name()
         print("Creating Jina Embeddings instance...")
         self.embedding = JinaEmbeddings()
         print("Creating Qdrant instance...")
         self.qdrant = Qdrant(
             client=self.qdrant_client,
-            collection_name=self.collection_name,
+            collection_name=env.get_collection_name(),
             embeddings=self.embedding,
             content_payload_key="text",
         )

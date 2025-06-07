@@ -12,7 +12,8 @@ permissions:
 env:
   REGION: northamerica-northeast1 #torono
   ARTIFACT_REPO: nautichat
-  IMAGE_NAME: ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/nautichat
+  IMAGE_NAME: >-
+    ${{ vars.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ vars.ARTIFACT_REPO }}/nautichat
 
 jobs:
   # Tests

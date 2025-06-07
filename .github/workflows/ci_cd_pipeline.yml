@@ -54,9 +54,7 @@ jobs:
       - id: auth
         uses: google-github-actions/auth@v2
         with:
-          token_format: 'access_token'
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+          credentials_json: ${{ secrets.GCLOUD_SERVICE_KEY }}
 
       # Docker login to Artifact Registry
       - uses: docker/login-action@v3
@@ -88,9 +86,7 @@ jobs:
       - id: auth
         uses: google-github-actions/auth@v2
         with:
-          token_format: 'access_token'
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+          credentials_json: ${{ secrets.GCLOUD_SERVICE_KEY }}
 
       - id: deploy
         uses: google-github-actions/deploy-cloudrun@v2

@@ -98,3 +98,4 @@ jobs:
           service:  ${{ secrets.SERVICE_NAME }}
           region:   ${{ env.REGION }}
           image:    ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          flags:    '--allow-unauthenticated'

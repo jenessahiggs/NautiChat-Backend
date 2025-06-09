@@ -180,4 +180,7 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Ignore SQLite DB files
+/backend-api/db/*.db
+
 .vscode/launch.json

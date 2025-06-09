@@ -24,7 +24,7 @@ router = APIRouter()
 @router.post("/conversations", status_code=201, response_model=Conversation)
 def create_conversation(
     title: Optional[str],
-    current_user: Annotated[User, Depends(get_current_user)], # Make get_current_user optional
+    current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_conv_db)],
 ) -> Conversation:
     """Create a new conversation"""
@@ -121,12 +121,12 @@ def submit_feedback(
 
     if existing_feedback:
         # Update only fields that are provided in the request
-        update_data = feedback.dict(exclude_unset=True)
+        update_data = feedback.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(existing_feedback, key, value)
     else:
         # Create new feedback entry
-        new_feedback = FeedbackModel(message_id=message_id, **feedback.dict())
+        new_feedback = FeedbackModel(message_id=message_id, **feedback.model_dump())
         db.add(new_feedback)
 
     db.commit()

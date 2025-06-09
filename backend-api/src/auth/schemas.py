@@ -1,16 +1,14 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 # Data safe to return to user
-class User(BaseModel):
-    user_id: int
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
     username: str
     onc_token: str
     is_admin: bool = False
-
-
-class UserInDB(User):
-    hashed_password: str
 
 
 class CreateUserRequest(BaseModel):

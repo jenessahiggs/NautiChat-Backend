@@ -1,13 +1,16 @@
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 import jwt
 from fastapi import HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
+from sqlalchemy.orm import Session
 
-from . import config
-from .schemas import CreateUserRequest, Token, UserInDB
+from src.auth import config
+from src.auth.schemas import CreateUserRequest, Token
+from src.auth import models
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -22,32 +25,8 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-FAKE_USER1 = UserInDB(
-    user_id=1,
-    username="user1",
-    onc_token="fake_token",
-    hashed_password=get_password_hash("password1"),
-    is_admin=False,
-)
-
-FAKE_USER2 = UserInDB(
-    user_id=2,
-    username="user2",
-    onc_token="fake_token2",
-    hashed_password=get_password_hash("password2"),
-    is_admin=True,
-)
-
-FAKE_USERS_DB = {}
-FAKE_USERS_DB.update(
-    {"user1": FAKE_USER1.model_dump(), "user2": FAKE_USER2.model_dump()}
-)
-
-
-def get_user(db, username: str):
-    if username in db:
-        user_dict = db[username]
-        return UserInDB(**user_dict)
+def get_user(username: str, db: Session) -> Optional[models.User]:
+    return db.query(models.User).filter(models.User.username == username).first()
 
 
 def create_access_token(
@@ -64,11 +43,13 @@ def create_access_token(
     return encoded_jwt
 
 
-def register_user(user_register: CreateUserRequest, settings: config.Settings) -> Token:
+def register_user(
+    user_register: CreateUserRequest, settings: config.Settings, db: Session
+) -> Token:
     """Register a new user"""
 
     # check that the user does not already exist
-    existing_user = get_user(FAKE_USERS_DB, user_register.username)
+    existing_user = get_user(user_register.username, db)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -76,14 +57,14 @@ def register_user(user_register: CreateUserRequest, settings: config.Settings) -
         )
 
     # create a new user
-    new_user = UserInDB(
-        user_id=len(FAKE_USERS_DB) + 1,
+    new_user = models.User(
         username=user_register.username,
         onc_token=user_register.onc_token,
         hashed_password=get_password_hash(user_register.password),
-        is_admin=False,
     )
-    FAKE_USERS_DB[new_user.username] = new_user.model_dump()
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
 
     token = create_access_token(
         new_user.username, timedelta(hours=settings.ACCESS_TOKEN_EXPIRE_HOURS), settings
@@ -92,9 +73,8 @@ def register_user(user_register: CreateUserRequest, settings: config.Settings) -
 
 
 def get_user_by_token(
-    token: str,
-    settings: config.Settings,
-) -> UserInDB:
+    token: str, settings: config.Settings, db: Session
+) -> models.User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -109,15 +89,14 @@ def get_user_by_token(
             raise credentials_exception
     except InvalidTokenError:
         raise credentials_exception
-    user = get_user(FAKE_USERS_DB, username)
+    user = get_user(username, db)
     if user is None:
         raise credentials_exception
     return user
 
 
 def login_user(
-    form_data: OAuth2PasswordRequestForm,
-    settings: config.Settings,
+    form_data: OAuth2PasswordRequestForm, settings: config.Settings, db: Session
 ) -> Token:
     """Login and return a token"""
     invalid_credentials_exception = HTTPException(
@@ -127,7 +106,7 @@ def login_user(
     )
 
     # check that the user actually exists
-    matched_user = get_user(FAKE_USERS_DB, form_data.username)
+    matched_user = get_user(form_data.username, db)
     if not matched_user:
         raise invalid_credentials_exception
     # check that the password is correct
@@ -144,11 +123,12 @@ def login_user(
     return Token(access_token=token, token_type="bearer")
 
 
-def update_onc_token(
-    user: UserInDB,
-    onc_token: str,
-) -> UserInDB:
+def update_onc_token(user: models.User, new_onc_token: str, db: Session) -> models.User:
     """Update the ONC token for the given user"""
-    user.onc_token = onc_token
-    FAKE_USERS_DB[user.username] = user.model_dump()
+
+    user.onc_token = new_onc_token
+
+    db.commit()
+    db.refresh(user)
+
     return user

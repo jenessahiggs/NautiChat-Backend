@@ -1,16 +1,19 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-############################################################
-# User Database
-############################################################
+
+DATABASE_URL = "sqlite:///./app.db"
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
 
 
-
-############################################################
-# LLM: Conversation Database
-############################################################
-CONVERSTATION_DATABASE_URL = "sqlite:///./conversation.db"
-conv_engine = create_engine(CONVERSTATION_DATABASE_URL)
-ConvSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=conv_engine)
-ConvBase = declarative_base()
+def get_db():
+    """Get a new database session."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

@@ -98,4 +98,6 @@ jobs:
           service:  ${{ secrets.SERVICE_NAME }}
           region:   ${{ env.REGION }}
           image:    ${{ env.IMAGE_NAME }}:${{ github.sha }}
-          flags:    '--allow-unauthenticated --update-env-vars= SECRET_KEY=${{ vars.SECRET_KEY }}, ALGORITHM=${{ vars.ALGORITHM }}, ACCESS_TOKEN_EXPIRE_HOURS=${{ vars.ACCESS_TOKEN_EXPIRE_HOURS }},'
+          flags: >-
+        --allow-unauthenticated
+        --update-env-vars=SECRET_KEY=${{ vars.SECRET_KEY }},ALGORITHM=${{ vars.ALGORITHM }},ACCESS_TOKEN_EXPIRE_HOURS=${{ vars.ACCESS_TOKEN_EXPIRE_HOURS }},ONC_TOKEN=${{ vars.ONC_TOKEN }}

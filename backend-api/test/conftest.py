@@ -1,22 +1,33 @@
+import sqlite3
 from datetime import timedelta
+from typing import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 from src.auth import models
 from src.auth.dependencies import get_settings
 from src.auth.service import create_access_token
 from src.database import Base, get_db
 from src.main import app
-from typing import Iterator
 
 
 @pytest.fixture()
 def session() -> Iterator[Session]:
     """Return the test db session created for each test"""
     test_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+
+    # foreign key constraints are not enforced by default
+    @event.listens_for(test_engine, "connect")
+    def _(dbapi_connection, _):
+        if isinstance(dbapi_connection, sqlite3.Connection):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+
+    Base.metadata.drop_all(bind=test_engine)
     Base.metadata.create_all(bind=test_engine)
 
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)

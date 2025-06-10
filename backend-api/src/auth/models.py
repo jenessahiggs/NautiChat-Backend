@@ -1,6 +1,13 @@
+from typing import TYPE_CHECKING, List
+
+from sqlalchemy import Boolean, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from src.database import Base
-from sqlalchemy import Integer, String, Boolean
-from sqlalchemy.orm import Mapped, mapped_column
+
+# want to expose import for type checkers but don't want circular import
+if TYPE_CHECKING:
+    from src.llm.models import Conversation
 
 
 class User(Base):
@@ -11,3 +18,6 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String)
     onc_token: Mapped[str] = mapped_column(String)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # a user can have many conversations
+    conversations: Mapped[List["Conversation"]] = relationship(back_populates="user", cascade="all, delete-orphan")

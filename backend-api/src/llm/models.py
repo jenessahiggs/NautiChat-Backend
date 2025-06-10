@@ -1,6 +1,13 @@
-from sqlalchemy import Integer, String, ForeignKey, Text
-from sqlalchemy.orm import relationship, Mapped, mapped_column
+from typing import TYPE_CHECKING, List
+
+from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from src.database import Base
+
+# want to expose import for type checkers but don't want circular import
+if TYPE_CHECKING:
+    from src.auth.models import User
 
 
 class Conversation(Base):
@@ -8,9 +15,10 @@ class Conversation(Base):
 
     conversation_id: Mapped[int] = mapped_column(primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String, nullable=True)
-    user_id: Mapped[int] = mapped_column(nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 
-    messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
+    messages: Mapped[List["Message"]] = relationship(back_populates="conversation", cascade="all, delete-orphan")
+    user: Mapped["User"] = relationship(back_populates="conversations")
 
 
 class Message(Base):
@@ -18,13 +26,13 @@ class Message(Base):
 
     message_id: Mapped[int] = mapped_column(primary_key=True, index=True)
     conversation_id: Mapped[int] = mapped_column(ForeignKey("conversations.conversation_id"), nullable=False)
-    user_id: Mapped[int] = mapped_column(nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 
     input: Mapped[str] = mapped_column(Text)
     response: Mapped[str] = mapped_column(Text)
 
-    conversation = relationship("Conversation", back_populates="messages")
-    feedback = relationship("Feedback", back_populates="message", uselist=False, cascade="all, delete-orphan")
+    conversation: Mapped["Conversation"] = relationship(back_populates="messages")
+    feedback: Mapped["Feedback"] = relationship(back_populates="message", uselist=False, cascade="all, delete-orphan")
 
 
 class Feedback(Base):
@@ -35,4 +43,4 @@ class Feedback(Base):
     rating: Mapped[int] = mapped_column(Integer)
     comment: Mapped[str] = mapped_column(Text, nullable=True)
 
-    message = relationship("Message", back_populates="feedback")
+    message: Mapped["Message"] = relationship(back_populates="feedback")

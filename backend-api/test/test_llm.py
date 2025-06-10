@@ -1,4 +1,7 @@
-def test_create_converstation(client, user_headers):
+from fastapi.testclient import TestClient
+
+
+def test_create_converstation(client: TestClient, user_headers):
     # Payload for creating a conversation
     payload = {"title": "Test Conversation"}
     response = client.post("/llm/conversations", params=payload, headers=user_headers)
@@ -10,13 +13,13 @@ def test_create_converstation(client, user_headers):
     assert isinstance(data["conversation_id"], int)
 
 
-def test_get_conversations_empty(client, user_headers):
+def test_get_conversations_empty(client: TestClient, user_headers):
     response = client.get("/llm/conversations", headers=user_headers)
     assert response.status_code == 200
     assert response.json() == []
 
 
-def test_get_single_conversation(client, user_headers):
+def test_get_single_conversation(client: TestClient, user_headers):
     # Create a conversation
     post_response = client.post("/llm/conversations", params={"title": "Conversation 1"}, headers=user_headers)
     conv_id = post_response.json()["conversation_id"]
@@ -28,7 +31,7 @@ def test_get_single_conversation(client, user_headers):
     assert get_response.json()["title"] == "Conversation 1"
 
 
-def test_get_single_conversation_unauthorized(client, user_headers):
+def test_get_single_conversation_unauthorized(client: TestClient, user_headers):
     # Create user1 conversation
     response = client.post("/llm/conversations", params={"title": "Conversation 2"}, headers=user_headers)
     conv_id = response.json()["conversation_id"]
@@ -44,7 +47,7 @@ def test_get_single_conversation_unauthorized(client, user_headers):
     assert response.status_code == 404
 
 
-def test_generate_response(client, user_headers):
+def test_generate_response(client: TestClient, user_headers):
     # Create conversation
     response = client.post("/llm/conversations", params={"title": "Chatting"}, headers=user_headers)
     conv_id = response.json()["conversation_id"]
@@ -58,7 +61,7 @@ def test_generate_response(client, user_headers):
     assert "LLM Response for" in data["response"]
 
 
-def test_get_message(client, user_headers):
+def test_get_message(client: TestClient, user_headers):
     # Create a Conversation + message
     conversation = client.post("/llm/conversations", params={"title": "Get Message"}, headers=user_headers).json()
     msg = client.post(
@@ -73,7 +76,7 @@ def test_get_message(client, user_headers):
     assert response.json()["message_id"] == msg["message_id"]
 
 
-def test_feedback_create_and_update(client, user_headers):
+def test_feedback_create_and_update(client: TestClient, user_headers):
     # Create conversation + message
     conversation = client.post("/llm/conversations", params={"title": "Feedback Test"}, headers=user_headers).json()
     msg = client.post(

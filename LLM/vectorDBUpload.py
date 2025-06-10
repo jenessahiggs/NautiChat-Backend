@@ -7,12 +7,17 @@ from RAG import JinaEmbeddings
 from RAG import QdrantClientWrapper
 from uuid import uuid4
 from qdrant_client.models import PointStruct
+from onc import ONC
+from dotenv import load_dotenv
+from pathlib import Path
+import requests
+from bs4 import BeautifulSoup
 
 '''
 Series of functions to preprocess PDF files, extract structured text chunks,
 and embeds them using a Jina Model. Includes handler to upload embedded data to a vector database.
 
-Usage:
+Usage for pdfs:
 1. Call `prepare_embedding_input(file_path)` with the path to the PDF file. Optionally, you can pass a `JinaEmbeddings` instance to use a specific embedding model. If no embedding model is provided, a default instance will be created.
 2. This function will return a list of dictionaries, each containing:
    - `id`: Unique identifier for the chunk.
@@ -20,6 +25,12 @@ Usage:
     - `text`: The text content of the chunk.
     - `metadata`: Additional metadata source file, section heading, page number, and chunk index.
 3. Call `upload_to_vector_db(resultsList, qdrant)` to upload the list of results to a Qdrant vector database.
+
+Usage for scraping ONC URIs:
+1. Call `get_uris_from_onc(location_code)` with the desired location code to retrieve a list of URIs.
+2. Call `getformatFromURI(uri)` for each URI to extract structured information, including heading, paragraphs, page numbers, identifier, and source URL.
+3. Use `prepare_embedding_input_from_preformatted(input, embedding_model)` to prepare the embedding input from the list of structured data obtained from the URIs.
+4. Call `upload_to_vector_db(resultsList, qdrant)` to upload the list of results to a Qdrant vector database.
 
 To speed up use assumes that the embedding model and qdrant client are being used from the RAG module.
 '''
@@ -152,6 +163,81 @@ def prepare_embedding_input(file_path: str, embedding_model: JinaEmbeddings = No
 
     return results
 
+# input must be of form [{'heading': '...', 'paragraphs': ['...', '...'], 'page': [1, 2, ...], 'id': '...', 'source': '...'}, ...]
+def prepare_embedding_input_from_preformatted(input: list, embedding_model: JinaEmbeddings = None):
+
+    results = []
+
+    for section in input:
+        full_text = " ".join(section["paragraphs"])
+        chunks = chunk_text_with_heading(full_text, section["heading"])
+
+        if embedding_model is None:
+            embedding_model = JinaEmbeddings()
+        embeddings = embedding_model.embed_documents(chunks)
+
+        for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+            results.append({
+                "id": f"{section['id']}_chunk_{i}",
+                "embedding": embedding.tolist(),
+                "text": chunk,
+                "metadata": {
+                    "source": section["source"],
+                    "section_heading": section["heading"],
+                    "page": section["page"],
+                    "chunk_index": i
+                }
+            })
+
+    return results
+
+def getformatFromURI(url):
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise Exception(f"Failed to fetch data from {url}")
+    
+    soup = BeautifulSoup(response.text, 'html.parser')
+    h2 = soup.find('h2')
+    if h2:
+        title = h2.text.strip()
+    else:
+        title = ""
+
+    definition_row = soup.find('th', string="Definition")
+    if definition_row:
+        definition_text = "Definition: " + definition_row.find_next_sibling("td").text.strip()
+    else:
+        definition_text = ""
+
+    identifier_row = soup.find('th', string="Identifier")
+    if identifier_row:
+        identifier_text = identifier_row.find_next_sibling("td").text.strip()
+    else:
+        identifier_text = ""
+
+    if title == "" and definition_text == "":
+        return None
+    return {'heading': title, 'paragraphs': [definition_text], 'page': [], 'id': identifier_text, 'source': url}
+    
+
+def get_uris_from_onc(location_code):
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    load_dotenv(dotenv_path=env_path)
+    ONC_TOKEN = os.getenv("ONC_TOKEN")
+    onc = ONC(ONC_TOKEN)
+
+
+    params = {
+        "locationCode": location_code,
+    }
+    devices = onc.getDevices(params)
+    uris = []
+    for i in devices:
+        for j in i["cvTerm"]["device"]:
+            if "uri" in j:
+                uris.append(j["uri"])
+    uris = list(set(uris))  # Remove duplicates
+    return uris
 
 def upload_to_vector_db(resultsList: list, qdrant: QdrantClientWrapper):
     points = []

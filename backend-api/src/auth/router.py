@@ -22,7 +22,7 @@ def login(
     return service.login_user(form_data, settings, db)
 
 
-@router.post("/register")
+@router.post("/register", status_code=201)
 def register_user(
     user_request: schemas.CreateUserRequest,
     settings: Annotated[config.Settings, Depends(get_settings)],
@@ -46,13 +46,3 @@ def update_onc_token(
 ) -> schemas.UserOut:
     """Update the ONC token for the current user"""
     return service.update_onc_token(user, onc_token, db)
-
-
-# Routes for testing purposes. Should be removed later
-
-# @router.get("/settings")
-# def get_settings_list(
-#     settings: Annotated[config.Settings, Depends(get_settings)],
-# ) -> config.Settings:
-#     """Get the application settings"""
-#     return settings

@@ -4,7 +4,7 @@ from groq import Groq
 import json
 import os
 from datetime import datetime, timedelta
-from toolsSprint1 import get_properties_at_cambridge_bay, get_daily_sea_temperature_stats_cambridge_bay
+from toolsSprint1 import get_properties_at_cambridge_bay, get_daily_sea_temperature_stats_cambridge_bay, get_deployed_devices_over_time_interval
 from dotenv import load_dotenv
 import httpx
 from pathlib import Path
@@ -63,6 +63,27 @@ async def run_conversation(user_prompt, RAG_instance: RAG):
                 },
             },
         },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_deployed_devices_over_time_interval",
+                "description": "Get the devices at cambridge bay deployed over the specified time interval including sublocations \nReturns: \nJSON string: List of deployed devices and their metadata Each item includes: \n- begin (str): deployment start time \n- end (str): deployment end time \n- deviceCode (str) \n- deviceCategoryCode (str) \n- locationCode (str) \n- citation (dict): citation metadata (includes description, doi, etc) \nArgs: \ndateFrom (str): ISO 8601 start date (ex: '2016-06-01T00:00:00.000Z') \ndateTo (str): ISO 8601 end date (ex: '2016-09-30T23:59:59.999Z')",
+                "parameters": {
+                    "properties": {
+                        "dateFrom": {
+                            "type": "string",
+                            "description": "ISO 8601 start date (ex: '2016-06-01T00:00:00.000Z')",
+                        },
+                        "dateTo": {
+                            "type": "string",
+                            "description": "ISO 8601 end date (ex: '2016-09-30T23:59:59.999Z')",
+                        }
+                    },
+                    "required": ["dateFrom", "dateTo"],
+                    "type": "object",
+                },
+            },
+        },
     ]
     #print("Tools defined successfully.")
     vectorDBResponse = RAG_instance.get_documents(user_prompt)
@@ -87,6 +108,7 @@ async def run_conversation(user_prompt, RAG_instance: RAG):
         available_functions = {
             "get_properties_at_cambridge_bay": get_properties_at_cambridge_bay,
             "get_daily_sea_temperature_stats_cambridge_bay": get_daily_sea_temperature_stats_cambridge_bay,
+            "get_deployed_devices_over_time_interval": get_deployed_devices_over_time_interval,
         }
         # Add the LLM's response to the conversation
         messages.append(response_message)

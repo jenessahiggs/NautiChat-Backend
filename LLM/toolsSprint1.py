@@ -2,8 +2,8 @@ import pandas as pd
 import asyncio
 from groq import Groq
 import json
-import os
 import pprint
+from onc import ONC
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
@@ -21,6 +21,9 @@ env_path = Path(__file__).resolve().parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 ONC_TOKEN = os.getenv("ONC_TOKEN")
 CAMBRIDGE_LOCATION_CODE = os.getenv("CAMBRIDGE_LOCATION_CODE") # Change for a different location
+onc = ONC(ONC_TOKEN)
+cambridgeBayLocations = ["CBY", "CBYDS", "CBYIP", "CBYIJ", "CBYIU", "CBYSP", "CBYSS", "CBYSU", "CF240"]
+
 
 async def get_properties_at_cambridge_bay():
     """Get a list of properties of data available at Cambridge Bay
@@ -77,3 +80,51 @@ async def get_daily_sea_temperature_stats_cambridge_bay(day_str: str):
             "daily_avg": round(data["value"], 2),
         }
     )
+
+async def get_deployed_devices_over_time_interval(dateFrom: str, dateTo: str):
+    """
+    Get the devices at cambridge bay deployed over the specified time interval including sublocations
+    Returns:
+        JSON string: List of deployed devices and their metadata Each item includes:
+            - begin (str): deployment start time
+            - end (str): deployment end time
+            - deviceCode (str)
+            - deviceCategoryCode (str)
+            - locationCode (str)
+            - citation (dict): citation metadata (includes description, doi, etc)
+    Args:
+        dateFrom (str): ISO 8601 start date (ex: '2016-06-01T00:00:00.000Z')
+        dateTo (str): ISO 8601 end date (ex: '2016-09-30T23:59:59.999Z')
+    """
+    deployedDevices = []
+    for locationCode in cambridgeBayLocations:
+        params = {
+            "locationCode": locationCode,
+            "dateFrom": dateFrom,
+            "dateTo": dateTo,
+        }
+        try:
+            response = onc.getDeployments(params)
+        except Exception as e:
+            if e.response.status_code == 404:
+                # print(f"Warning: No deployments found for locationCode {locationCode}")
+                continue
+            else:
+                raise  # re-raise if different error
+        for deployment in response:
+            if deployment is None:
+                continue
+            device_info = {
+                "begin": deployment["begin"],
+                "end": deployment["end"],
+                "deviceCode": deployment["deviceCode"],
+                "deviceCategoryCode": deployment["deviceCategoryCode"],
+                "locationCode": deployment["locationCode"],
+                "citation": deployment["citation"],
+            }
+            deployedDevices.append(device_info)
+        
+    if deployedDevices == []:
+        return json.dumps({"result": "No data available for the given date."})
+    
+    return json.dumps(deployedDevices)

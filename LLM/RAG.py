@@ -11,7 +11,7 @@ from Environment import Environment
 
 
 class JinaEmbeddings(Embeddings):
-    def __init__(self, task="retrieval.document"):
+    def __init__(self, task="retrieval.passage"):
         print("Creating Jina Embeddings instance...")
         self.model = SentenceTransformer("jinaai/jina-embeddings-v3", trust_remote_code=True)
         print("Jina Embeddings instance created.")
@@ -24,10 +24,16 @@ class JinaEmbeddings(Embeddings):
         return self.model.encode([text], task="retrieval.query", prompt_name="retrieval.query")[0]
 
 
-class RAG:
+class QdrantClientWrapper:
     def __init__(self, env: Environment):
         self.qdrant_client = QdrantClient(url=env.get_qdrant_url(), api_key=env.get_qdrant_api_key())
         self.collection_name = env.get_collection_name()
+
+class RAG:
+    def __init__(self, env: Environment):
+        self.qdrant_client_wrapper = QdrantClientWrapper(env)
+        self.qdrant_client = self.qdrant_client_wrapper.qdrant_client
+        self.collection_name = self.qdrant_client_wrapper.collection_name
         print("Creating Jina Embeddings instance...")
         self.embedding = JinaEmbeddings()
         print("Creating Qdrant instance...")

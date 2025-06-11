@@ -3,10 +3,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.database import sessionmanager, Base, init_redis
+
 from src.admin.router import router as admin_router
 from src.auth import models  # noqa
 from src.auth.router import router as auth_router
-from src.database import Base, engine, init_redis
 from src.llm import models  # noqa
 from src.llm.router import router as llm_router
 from src.middleware import RateLimitMiddleware
@@ -46,5 +47,14 @@ def create_app():
 
 app = create_app()
 
-# Database set-up
-Base.metadata.create_all(bind=engine)
+@app.on_event("startup")
+async def on_startup():
+    '''Create tables on startup using async engine'''
+    async with sessionmanager._engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    '''Close connection to database'''
+    await sessionmanager.close()

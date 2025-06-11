@@ -127,8 +127,8 @@ async def run_conversation(user_prompt, RAG_instance: RAG):
                 }
             )
         # Make a second API call with the updated conversation
-        second_response = env.get_client.chat.completions.create(
-            model=env.get_model,
+        second_response = env.get_client().chat.completions.create(
+            model=env.get_model(),
             messages=messages,
             stream=False,
             tools=tools,

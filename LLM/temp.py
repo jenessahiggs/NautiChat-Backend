@@ -28,20 +28,20 @@ class LLM:
         self.chatHistory = chatHistory if chatHistory is not None else []
 
         if startingPrompt is None:
-            startingPrompt = f"You are an assistant for Oceans Network Canada that helps users access ONCs database via natural language.  \
+            self.startingPrompt = f"You are an assistant for Oceans Network Canada that helps users access ONCs database via natural language.  \
                 You can choose to use the given tools to obtain the data needed to answer the prompt and provide the results if that is required. Dont provide the results in JSON format. Make it readable! \
                 The current day is: {self.currentDate}."
-
+        else:
+            self.startingPrompt = startingPrompt
         self.messages = [
             {
                 "role": "system",
-                "content": startingPrompt,
+                "content": self.startingPrompt,
             },
             {
                 "role": "user",
                 "content": "",  # Placeholder for user input
-            },
-            {"role": "system", "content": ""},  # Where Data retrieval from Vector DB will occur and be stored
+            }
         ]
 
         self.messages.extend(
@@ -57,41 +57,43 @@ class LLM:
             "get_deployed_devices_over_time_interval": get_deployed_devices_over_time_interval,
         }
         self.mostRecentData = None  # Placeholder for most recent data, if needed
-
+        
     async def run_conversation(self, user_prompt):
-        print("Starting conversation with user prompt:", user_prompt)
-        self.messages[-2]["content"] = user_prompt  # -2 as second last in messages
-        vectorDBResponse = self.RAG_instance.get_documents(user_prompt)
-        print("Vector DB response:", vectorDBResponse)
-        self.messages[-1] = {"role": "system", "content": vectorDBResponse.to_string()}  # -1 as last in messages
+        #print("Starting conversation with user prompt:", user_prompt)
+        self.messages[-1]["content"] = user_prompt  # -1 as second last in messages
+        #print(self.messages)
         response = self.env.get_client().chat.completions.create(
             model=self.env.get_model(),  # LLM to use
             messages=self.messages,  # Conversation history
             stream=False,
             tools=self.toolDescriptions,  # Available tools (i.e. functions) for our LLM to use
             tool_choice="auto",  # Let our LLM decide when to use tools
-            max_completion_tokens=256,  # Maximum number of tokens to allow in our response
+            max_completion_tokens=512,  # Maximum number of tokens to allow in our response
             temperature=1,  # A temperature of 1=default balance between randomnes and confidence. Less than 1 is less randomness, Greater than is more randomness
         )
         # Extract the response and any tool call responses
         response_message = response.choices[0].message
-        # print("Response received from Groq API.")
-        # print("Response message:", response_message)
         tool_calls = response_message.tool_calls
+
         if tool_calls:
             # Define the available tools that can be called by the LLM
             # Add the LLM's response to the conversation
             self.messages.append(response_message)
-
             # Process each tool call
-            # print("Processing tool calls...")
-            # print("Tool calls:", tool_calls)
             for tool_call in tool_calls:
                 function_name = tool_call.function.name
+                if (function_name == "vectorDB"):
+                    vectorDBResponse = self.RAG_instance.get_documents(user_prompt)
+                    #print("Vector DB response:", vectorDBResponse)
+                    self.messages.append({"role": "vectorDatabase", "content": vectorDBResponse.to_string()})
+                    continue  # Skip to next tool call if vectorDB is called
                 function_to_call = self.available_functions[function_name]
                 function_args = json.loads(tool_call.function.arguments)
-                # Call the tool and get the response
-                function_response = await function_to_call(**function_args)
+                #print(tool_call.function.arguments)
+                if not function_args:
+                    function_response = await function_to_call()
+                else: 
+                    function_response = await function_to_call(**function_args)
                 self.messages.append(
                     {
                         "tool_call_id": tool_call.id,
@@ -112,24 +114,23 @@ class LLM:
                 stream=False,
                 tools=self.toolDescriptions,
                 tool_choice="auto",
-                max_completion_tokens=256,
+                max_completion_tokens=2048,
                 temperature=1,
             )  # Calls LLM again with all the data from all functions
             # Return the final response
-            # print("Second response received from Groq API.")
-            # print("Second response message:", second_response.choices)
 
-            print("Final response from LLM:", second_response.choices[0].message.content)
+            #print("Final response from LLM:", second_response.choices[0].message.content)
             self.chatHistory.append(
                 {"role": "user", "content": user_prompt}
             )  # Append the final response to the conversation history
+            #print(type(second_response.choices[0].message.content))
             self.chatHistory.append(
-                {"role": "system", "content": second_response.choices[0].message}
+                {"role": "system", "content": second_response.choices[0].message.content}
             )  # Append the final response to the conversation history
             self.__KeepMessagesWithinLimit__()
             return second_response.choices[0].message.content
         else:
-            print("no tool calls", response_message.content)
+            # print("no tool calls", response_message.content)
             self.chatHistory.append(
                 {"role": "user", "content": user_prompt}
             )  # Append the final response to the conversation history
@@ -170,11 +171,7 @@ class LLM:
             {
                 "role": "user",
                 "content": "",  # Placeholder for user input
-            },
-            {
-                "role": "system",
-                "content": "",
-            },  # Where Data retrieval from Vector DB will occur and be stored + self.messages[-self.maxChatHistoryLength:]
+            }
         ]
 
 

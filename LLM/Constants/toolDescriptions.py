@@ -48,4 +48,21 @@ toolDescriptions = [
             },
         },
     },
+    {
+            "type": "function",
+            "function": {
+                "name": "vectorDB",
+                "description": "Retrieves relevant documents from the vector database based on the user prompt.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_prompt": {
+                            "type": "string",
+                            "description": "The user's query to retrieve relevant documents.",
+                        }
+                    },
+                    "required": ["user_prompt"],
+                },
+            },
+        }
 ]

@@ -44,10 +44,8 @@ class LLM:
             }
         ]
 
-        self.messages.extend(
-            self.chatHistory
-        )  # Adding old messages to the conversation history. Maybe they wanted to start from an old conversation.
-        self.__KeepMessagesWithinLimit__()  # Ensuring not over message limit at the start
+        self.messages = self.chatHistory.copy()  # Adding old messages to the conversation history. Maybe they wanted to start from an old conversation.
+        self.__KeepMessagesWithinLimit__()  # Ensuring not over message limit at the start (Will also add the starting prompt and user input placeholder)
 
         self.toolDescriptions = toolDescriptions
         self.RAG_instance = RAG_instance if RAG_instance else RAG(env)  # Use provided RAG instance or create a new one

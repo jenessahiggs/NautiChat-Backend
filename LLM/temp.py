@@ -28,7 +28,7 @@ class LLM:
         self.chatHistory = chatHistory if chatHistory is not None else []
 
         if startingPrompt is None:
-            self.startingPrompt = f"You are an assistant for Oceans Network Canada that helps users access ONCs database via natural language.  \
+            self.startingPrompt = f"You are an assistant for Oceans Network Canada that helps users access ONCs database via natural language. \
                 You can choose to use the given tools to obtain the data needed to answer the prompt and provide the results if that is required. Dont provide the results in JSON format. Make it readable! \
                 The current day is: {self.currentDate}."
         else:
@@ -85,7 +85,7 @@ class LLM:
                 if (function_name == "vectorDB"):
                     vectorDBResponse = self.RAG_instance.get_documents(user_prompt)
                     #print("Vector DB response:", vectorDBResponse)
-                    self.messages.append({"role": "vectorDatabase", "content": vectorDBResponse.to_string()})
+                    self.messages.append({"role": "system", "content": vectorDBResponse.to_string()})
                     continue  # Skip to next tool call if vectorDB is called
                 function_to_call = self.available_functions[function_name]
                 function_args = json.loads(tool_call.function.arguments)

@@ -10,17 +10,24 @@ from Constants.toolDescriptions import toolDescriptions
 env = Environment()
 
 class LLM:
-    def __init__(self, env: Environment, RAG_instance: RAG = None, additionalMessages: list[dict] = None):
+    def __init__(self, env: Environment, RAG_instance: RAG = None, chatHistory: list[dict] = None, startingPrompt: str = None):
         self.env = env
         if not env.get_client():
             raise NoClientError("No client provided. Please provide a valid client.")#env does not have a client
         self.currentDate = datetime.now().strftime("%Y-%m-%d")
+
+        self.maxChatHistoryLength = 10 # Maximum number of messages to keep in the conversation history
+        self.chatHistory = chatHistory if chatHistory is not None else []
+
+        if startingPrompt is None:
+            startingPrompt = f"You are an assistant for Oceans Network Canada that helps users access ONCs database via natural language.  \
+                You can choose to use the given tools to obtain the data needed to answer the prompt and provide the results if that is required. Dont provide the results in JSON format. Make it readable! \
+                The current day is: {self.currentDate}."
+
         self.messages =[
             {
                 "role": "system",
-                "content": f"You are an assistant for Oceans Network Canada that helps users access ONCs database via natural language.  \
-                You can choose to use the given tools to obtain the data needed to answer the prompt and provide the results if that is required. Dont provide the results in JSON format. Make it readable! \
-                The current day is: {self.currentDate}.",
+                "content": startingPrompt,
             },
             {
                 "role": "user",
@@ -28,8 +35,9 @@ class LLM:
             },
             {"role": "system", "content": ""},  # Where Data retrieval from Vector DB will occur and be stored
         ] 
-        if additionalMessages is not None:
-            self.messages.extend(additionalMessages) #Adding old messages to the conversation history. Maybe they wanted to start from an old conversation.
+
+        self.messages.extend(self.chatHistory) #Adding old messages to the conversation history. Maybe they wanted to start from an old conversation.
+        self.__KeepMessagesWithinLimit__()#Ensuring not over message limit at the start
 
         self.toolDescriptions = toolDescriptions
         self.RAG_instance = RAG_instance if RAG_instance else RAG(env)  # Use provided RAG instance or create a new one
@@ -39,20 +47,21 @@ class LLM:
             "get_deployed_devices_over_time_interval": get_deployed_devices_over_time_interval,
         }
         self.mostRecentData = None  # Placeholder for most recent data, if needed
+        
     
     async def run_conversation(self, user_prompt):
         print("Starting conversation with user prompt:", user_prompt)
-        self.messages[1]["content"] = user_prompt
+        self.messages[-2]["content"] = user_prompt #-2 as second last in messages
         vectorDBResponse = self.RAG_instance.get_documents(user_prompt)
         print("Vector DB response:", vectorDBResponse)
-        self.messages[2] = {"role": "system", "content": vectorDBResponse.to_string()}
+        self.messages[-1] = {"role": "system", "content": vectorDBResponse.to_string()} #-1 as last in messages
         response = self.env.get_client().chat.completions.create(
             model=self.env.get_model(),  # LLM to use
             messages=self.messages,  # Conversation history
             stream=False,
             tools=self.toolDescriptions,  # Available tools (i.e. functions) for our LLM to use
             tool_choice="auto",  # Let our LLM decide when to use tools
-            max_completion_tokens=4096,  # Maximum number of tokens to allow in our response
+            max_completion_tokens=256,  # Maximum number of tokens to allow in our response
             temperature=1,  # A temperature of 1=default balance between randomnes and confidence. Less than 1 is less randomness, Greater than is more randomness
         )
         # Extract the response and any tool call responses
@@ -92,18 +101,23 @@ class LLM:
                 stream=False,
                 tools=self.toolDescriptions,
                 tool_choice="auto",
-                max_completion_tokens=4096,
+                max_completion_tokens=256,
                 temperature=1,
             )  # Calls LLM again with all the data from all functions
             # Return the final response
             # print("Second response received from Groq API.")
             # print("Second response message:", second_response.choices)
+            
             print("Final response from LLM:", second_response.choices[0].message.content)
-            self.messages.append({"role": "system", "content": second_response.choices[0].message})  # Append the final response to the conversation history
+            self.chatHistory.append({"role": "user", "content": user_prompt})  # Append the final response to the conversation history
+            self.chatHistory.append({"role": "system", "content": second_response.choices[0].message})  # Append the final response to the conversation history
+            self.__KeepMessagesWithinLimit__()
             return second_response.choices[0].message.content
         else:
             print("no tool calls", response_message.content)
-            self.messages.append({"role": "system", "content": response_message.content})  # Append the final response to the conversation history
+            self.chatHistory.append({"role": "user", "content": user_prompt})  # Append the final response to the conversation history
+            self.chatHistory.append({"role": "system", "content": response_message.content})  # Append the final response to the conversation history
+            self.__KeepMessagesWithinLimit__()
             return response_message.content
 
     def get_messages(self):
@@ -124,7 +138,19 @@ class LLM:
         elif not isinstance(self.mostRecentData, pd.DataFrame):
             raise TypeError("Most recent data is not in a recognized format.")
 
-
+    def __KeepMessagesWithinLimit__(self):
+        # Keep the last maxChatHistoryLength messages in the conversation history
+        self.messages = self.chatHistory[-self.maxChatHistoryLength:]  # Keep only the last maxChatHistoryLength messages[
+            + [{
+                "role": "system",
+                "content": self.startingPrompt,
+            },
+            {
+                "role": "user",
+                "content": "",  # Placeholder for user input
+            },
+            {"role": "system", "content": ""},  # Where Data retrieval from Vector DB will occur and be stored + self.messages[-self.maxChatHistoryLength:]
+            ]  
 
 async def main():
 

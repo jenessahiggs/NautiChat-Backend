@@ -17,7 +17,7 @@ from langchain.retrievers.document_compressors import CrossEncoderReranker
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from pathlib import Path
 # Load API key and location code from .env
-env_path = Path(__file__).resolve().parent.parent / '.env'
+env_path = Path(__file__).resolve().parent / '.env'
 load_dotenv(dotenv_path=env_path)
 ONC_TOKEN = os.getenv("ONC_TOKEN")
 CAMBRIDGE_LOCATION_CODE = os.getenv("CAMBRIDGE_LOCATION_CODE") # Change for a different location

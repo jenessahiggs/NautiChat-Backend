@@ -9,10 +9,7 @@ from toolsSprint1 import (
 )
 from RAG import RAG
 from Environment import Environment
-from Errors.noClientError import NoClientError
 from Constants.toolDescriptions import toolDescriptions
-
-env = Environment()
 
 
 class LLM:
@@ -20,8 +17,6 @@ class LLM:
         self, env: Environment, RAG_instance: RAG = None, chatHistory: list[dict] = None, startingPrompt: str = None
     ):
         self.env = env
-        if not env.get_client():
-            raise NoClientError("No client provided. Please provide a valid client.")  # env does not have a client
         self.currentDate = datetime.now().strftime("%Y-%m-%d")
 
         self.maxChatHistoryLength = 10  # Maximum number of messages to keep in the conversation history
@@ -172,13 +167,28 @@ class LLM:
             }
         ]
 
+    def clear_chat_history(self):
+        # Clear the chat history
+        self.chatHistory = []
+        self.messages = [
+            {
+                "role": "system",
+                "content": self.startingPrompt,
+            },
+            {
+                "role": "user",
+                "content": "",  # Placeholder for user input
+            }
+        ]
+
 
 async def main():
 
+    env = Environment()
     RAG_instance = RAG(env)
     print("RAG instance created successfully.")
     try:
-        LLM_Instance = LLM(env, RAG_instance=RAG_instance)  # Create an instance of the LLM class
+        LLM_Instance = LLM(env = env, RAG_instance=RAG_instance)  # Create an instance of the LLM class
         user_prompt = input("Enter your first question (or 'exit' to quit): ")
         while user_prompt not in ["exit", "quit"]:
             response = await LLM_Instance.run_conversation(user_prompt)

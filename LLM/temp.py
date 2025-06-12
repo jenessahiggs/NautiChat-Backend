@@ -99,11 +99,11 @@ class LLM:
             # print("Second response received from Groq API.")
             # print("Second response message:", second_response.choices)
             print("Final response from LLM:", second_response.choices[0].message.content)
-            self.messages.append({"role": "user", "content": second_response.choices[0].message})  # Append the final response to the conversation history
+            self.messages.append({"role": "system", "content": second_response.choices[0].message})  # Append the final response to the conversation history
             return second_response.choices[0].message.content
         else:
             print("no tool calls", response_message.content)
-            self.messages.append({"role": "user", "content": response_message.content})  # Append the final response to the conversation history
+            self.messages.append({"role": "system", "content": response_message.content})  # Append the final response to the conversation history
             return response_message.content
 
     def get_messages(self):

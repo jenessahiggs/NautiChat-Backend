@@ -2,24 +2,25 @@ import contextlib
 
 from typing import Any, AsyncIterator
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.pool import NullPool
+from sqlalchemy.orm import DeclarativeBase
 from src.settings import get_settings
 from redis.asyncio import Redis
 
 from sqlalchemy.ext.asyncio import (
     AsyncConnection, 
-    AsyncSession, 
+    AsyncSession,
+    AsyncAttrs, 
     async_sessionmaker, 
     create_async_engine,
 )
 
+# Note: DB is async compatible
 # Load DATABASE_URL from environment variable
 DATABASE_URL = get_settings().SUPABASE_DB_URL
 
 # Base class for all ORM models
-Base = declarative_base()
+class Base(AsyncAttrs, DeclarativeBase):
+    pass
 
 class DatabaseSessionManager:
     """

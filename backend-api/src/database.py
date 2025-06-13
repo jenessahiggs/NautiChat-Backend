@@ -3,7 +3,6 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import NullPool
 from src.settings import get_settings
 
-
 engine = create_engine(
     get_settings().SUPABASE_DB_URL,
     poolclass=NullPool,

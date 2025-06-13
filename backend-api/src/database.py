@@ -1,11 +1,11 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.pool import NullPool
+from src.settings import get_settings
 
-
-DATABASE_URL = "sqlite:///./app.db"
 
 engine = create_engine(
-    DATABASE_URL,
+    get_settings().SUPABASE_DB_URL,
     poolclass=NullPool,
     connect_args={"sslmode": "require"},  # Required for Supabase Postgres
 )

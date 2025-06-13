@@ -16,11 +16,12 @@ from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import CrossEncoderReranker
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from pathlib import Path
+
 # Load API key and location code from .env
-env_path = Path(__file__).resolve().parent.parent / '.env'
+env_path = Path(__file__).resolve().parent / ".env"
 load_dotenv(dotenv_path=env_path)
 ONC_TOKEN = os.getenv("ONC_TOKEN")
-CAMBRIDGE_LOCATION_CODE = os.getenv("CAMBRIDGE_LOCATION_CODE") # Change for a different location
+CAMBRIDGE_LOCATION_CODE = os.getenv("CAMBRIDGE_LOCATION_CODE")  # Change for a different location
 onc = ONC(ONC_TOKEN)
 cambridgeBayLocations = ["CBY", "CBYDS", "CBYIP", "CBYIJ", "CBYIU", "CBYSP", "CBYSS", "CBYSU", "CF240"]
 
@@ -81,6 +82,7 @@ async def get_daily_sea_temperature_stats_cambridge_bay(day_str: str):
         }
     )
 
+
 async def get_deployed_devices_over_time_interval(dateFrom: str, dateTo: str):
     """
     Get the devices at cambridge bay deployed over the specified time interval including sublocations
@@ -123,8 +125,8 @@ async def get_deployed_devices_over_time_interval(dateFrom: str, dateTo: str):
                 "citation": deployment["citation"],
             }
             deployedDevices.append(device_info)
-        
+
     if deployedDevices == []:
         return json.dumps({"result": "No data available for the given date."})
-    
+
     return json.dumps(deployedDevices)

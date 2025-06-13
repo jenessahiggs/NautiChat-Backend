@@ -29,6 +29,7 @@ class QdrantClientWrapper:
         self.qdrant_client = QdrantClient(url=env.get_qdrant_url(), api_key=env.get_qdrant_api_key())
         self.collection_name = env.get_collection_name()
 
+
 class RAG:
     def __init__(self, env: Environment):
         self.qdrant_client_wrapper = QdrantClientWrapper(env)

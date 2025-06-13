@@ -1,4 +1,9 @@
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+from src.auth.models import User
+from src.llm.models import Conversation, Message
+from src.llm.utils import get_context
 
 
 def test_create_converstation(client: TestClient, user_headers):
@@ -97,3 +102,61 @@ def test_feedback_create_and_update(client: TestClient, user_headers):
     updated_fb = {"rating": 1, "comment": "Actually not helpful."}
     response = client.patch(f"/llm/messages/{msg['message_id']}/feedback", json=updated_fb, headers=user_headers)
     assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_get_context_no_messages(session: Session, user_headers):
+    # When no messages in db, should return empty list
+
+    # Add conversation
+    user_in_db = session.query(User).first()
+    assert user_in_db is not None
+    new_conversation = Conversation(user_id=user_in_db.id)
+
+    session.add(new_conversation)
+    session.commit()
+    session.refresh(new_conversation)
+
+    context = await get_context(new_conversation.conversation_id, 500, session)
+    assert len(context) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_context(session: Session, user_headers):
+    # Add conversation
+    user_in_db = session.query(User).first()
+    assert user_in_db is not None
+    new_conversation = Conversation(user_id=user_in_db.id)
+
+    session.add(new_conversation)
+    session.commit()
+    session.refresh(new_conversation)
+
+    content_8 = "one two three four five six seven eight"
+    content_3 = "one two three"
+
+    message_20 = Message(
+        conversation_id=new_conversation.conversation_id, user_id=user_in_db.id, input=content_8, response=content_8
+    )  # 4 + 8 + 8 = 20 words
+    message_15 = Message(
+        conversation_id=new_conversation.conversation_id, user_id=user_in_db.id, input=content_8, response=content_3
+    )  # 4 + 8 + 3 = 15 words
+
+    session.add(message_20)
+    session.add(message_15)
+    session.commit()
+    session.refresh(message_20)
+    session.refresh(message_15)
+    session.refresh(new_conversation)
+
+    context_1 = await get_context(new_conversation.conversation_id, 30, session)
+    assert len(context_1) == 2  # 1 for input and 1 for response
+
+    context_2 = await get_context(new_conversation.conversation_id, 100, session)
+    assert len(context_2) == 4
+    assert isinstance(context_2[0]["role"], str)
+    # most recent message should be returned first
+    assert context_2[0]["role"] == "user"
+    assert context_2[0]["content"] == message_15.input
+    assert context_2[1]["role"] == "system"
+    assert context_2[1]["content"] == message_15.response

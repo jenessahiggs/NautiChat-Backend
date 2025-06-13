@@ -29,7 +29,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if await self.redis_instance.setnx(key, self.max_requests):
             await self.redis_instance.expire(key, self.window_sec)
         cache_val: Optional[bytes] = await self.redis_instance.get(key)
-        print(f"dispatch {key}")
+
         if cache_val is not None:
             requests_remaining = int(cache_val)
             if requests_remaining > 0:
@@ -48,8 +48,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if not await self.permit_request(key):
             time_to_wait = await self.redis_instance.ttl(key)
             retry_info = f" Retry after {int(time_to_wait)}" if time_to_wait is not None else ""
-            print(retry_info)
-            print("helooooo")
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS, content={"detail": f"Rate limit exceeded.{retry_info}"}
             )

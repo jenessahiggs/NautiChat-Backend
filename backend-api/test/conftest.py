@@ -49,6 +49,10 @@ def client(session) -> Iterator[TestClient]:
             session.close()
 
     app.dependency_overrides[get_db] = override_get_db
+
+    # Disable rate limiter in tests
+    app.user_middleware = []
+
     with TestClient(app) as test_client:
         yield test_client
 

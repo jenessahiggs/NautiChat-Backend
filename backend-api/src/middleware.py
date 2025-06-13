@@ -19,7 +19,7 @@ def get_redis_instance():
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, window_sec: int = 30, max_requests: int = 4):
+    def __init__(self, app, window_sec: int = 30, max_requests: int = 10):
         super().__init__(app)
         self.window_sec = window_sec
         self.max_requests = max_requests

@@ -15,9 +15,15 @@ from src.middleware import RateLimitMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.redis_client = init_redis()
-    yield
+    # Create tables on startup using async engine
+    async with sessionmanager._engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
+    app.state.redis_client = init_redis()
+    
+    yield
+    # Close connection to database
+    await sessionmanager.close()
     await app.state.redis_client.aclose()
 
 
@@ -44,17 +50,5 @@ def create_app():
 
     return app
 
-
 app = create_app()
 
-@app.on_event("startup")
-async def on_startup():
-    '''Create tables on startup using async engine'''
-    async with sessionmanager._engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    '''Close connection to database'''
-    await sessionmanager.close()

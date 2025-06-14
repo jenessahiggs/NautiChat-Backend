@@ -2,20 +2,8 @@ from typing import Optional
 
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
-from redis.asyncio import Redis
 from starlette.middleware.base import BaseHTTPMiddleware
-
-from src.auth.dependencies import get_settings
-
-
-def get_redis_instance():
-    return Redis(
-        host="redis-13649.crce199.us-west-2-2.ec2.redns.redis-cloud.com",
-        port=13649,
-        decode_responses=True,
-        username="default",
-        password=get_settings().REDIS_PASSWORD,
-    )
+from redis.asyncio import Redis
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -23,17 +11,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.window_sec = window_sec
         self.max_requests = max_requests
-        self.redis_instance = get_redis_instance()
 
-    async def permit_request(self, key: str):
-        if await self.redis_instance.setnx(key, self.max_requests):
-            await self.redis_instance.expire(key, self.window_sec)
-        cache_val: Optional[bytes] = await self.redis_instance.get(key)
+    async def permit_request(self, redis: Redis, key: str):
+        if await redis.setnx(key, self.max_requests):
+            await redis.expire(key, self.window_sec)
+        cache_val: Optional[bytes] = await redis.get(key)
 
         if cache_val is not None:
             requests_remaining = int(cache_val)
             if requests_remaining > 0:
-                await self.redis_instance.decr(key)
+                await redis.decr(key)
                 return True
 
         return False
@@ -43,10 +30,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             raise ValueError("Client IP not found")
 
         client_ip = request.client.host
+        redis: Redis = request.app.state.redis_client
         key = f"{client_ip}:RATELIMIT"
 
-        if not await self.permit_request(key):
-            time_to_wait = await self.redis_instance.ttl(key)
+        if not await self.permit_request(redis, key):
+            time_to_wait = await redis.ttl(key)
             retry_info = f" Retry after {int(time_to_wait)}" if time_to_wait is not None else ""
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS, content={"detail": f"Rate limit exceeded.{retry_info}"}

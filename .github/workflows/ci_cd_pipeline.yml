@@ -109,5 +109,5 @@ jobs:
             SECRET_KEY=${{ vars.SECRET_KEY }}
             ALGORITHM=${{ vars.ALGORITHM }}
             ACCESS_TOKEN_EXPIRE_HOURS=${{ vars.ACCESS_TOKEN_EXPIRE_HOURS }}
-            REDIS_PASSWORD : ${{ secrets.REDIS_PASSWORD }}
+            REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
 

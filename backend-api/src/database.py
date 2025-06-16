@@ -3,14 +3,15 @@ import contextlib
 from typing import Any, AsyncIterator
 
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.engine.url import make_url
 from src.settings import get_settings
 from redis.asyncio import Redis
 
 from sqlalchemy.ext.asyncio import (
-    AsyncConnection, 
+    AsyncConnection,
     AsyncSession,
-    AsyncAttrs, 
-    async_sessionmaker, 
+    AsyncAttrs,
+    async_sessionmaker,
     create_async_engine,
 )
 
@@ -22,21 +23,30 @@ DATABASE_URL = get_settings().SUPABASE_DB_URL
 class Base(AsyncAttrs, DeclarativeBase):
     pass
 
+
 class DatabaseSessionManager:
     """
     Manages the async SQLAlchemy engine and session lifecycle.
-    This allows consistent session creation and teardown across
-    the FastAPI app. Can also be used for testing.
+    Supports both Postgres (e.g., Supabase) and SQLite for testing.
     """
 
     def __init__(self, db_url: str, engine_kwargs: dict[str, Any] = {}):
-        # Create the async engine
+        self._url = db_url
+        self._engine = None
+        self._sessionmaker = None
+
+        # Parse URL and detect DB type (postgres or sqlite)
+        url_obj = make_url(db_url)
+        is_postgres = url_obj.drivername.startswith("postgresql")
+
+        connect_args = {"sslmode": "require"} if is_postgres else {}
+
         self._engine = create_async_engine(
             db_url,
-            connect_args={"sslmode": "require"},  # Required for Supabase/Postgres
-            **engine_kwargs
+            connect_args=connect_args,
+            **engine_kwargs,
         )
-        # Create the session bound to the engine
+
         self._sessionmaker = async_sessionmaker(
             bind=self._engine,
             expire_on_commit=False,
@@ -45,19 +55,18 @@ class DatabaseSessionManager:
         )
 
     async def close(self):
-        '''Disposes the engine on app shutdown'''
-        if self._engine is None:
-            raise Exception("Database engine is not initialized")
-        await self._engine.dispose()
-        self._engine = None
-        self._sessionmaker = None
+        """Disposes the engine on app shutdown"""
+        if self._engine is not None:
+            await self._engine.dispose()
+            self._engine = None
+            self._sessionmaker = None
 
     @contextlib.asynccontextmanager
     async def connect(self) -> AsyncIterator[AsyncConnection]:
-        '''Context manager for DB connection'''
+        """Yields a raw database connection"""
         if self._engine is None:
             raise Exception("Database engine is not initialized")
-        
+
         async with self._engine.begin() as conn:
             try:
                 yield conn
@@ -67,10 +76,10 @@ class DatabaseSessionManager:
 
     @contextlib.asynccontextmanager
     async def session(self) -> AsyncIterator[AsyncSession]:
-        '''Context manager for async DB session (use in endpoints)'''
+        """Yields an ORM session for use in endpoints or services"""
         if self._sessionmaker is None:
             raise Exception("Sessionmaker is not initialized")
-        
+
         session = self._sessionmaker()
         try:
             yield session
@@ -80,12 +89,17 @@ class DatabaseSessionManager:
         finally:
             await session.close()
 
-# Global session manager instance
+
+# Read database URL from environment variable
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Create global session manager instance
 sessionmanager = DatabaseSessionManager(DATABASE_URL)
 
-# For FastAPI Endpoints (Dependency)
+
+# FastAPI dependency
 async def get_db_session() -> AsyncIterator[AsyncSession]:
-    """Get a new database session."""
+    """Dependency that yields a database session"""
     async with sessionmanager.session() as session:
         yield session
 

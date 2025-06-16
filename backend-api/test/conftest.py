@@ -1,26 +1,32 @@
-from datetime import timedelta
-from typing import AsyncIterator
-
+import os
 import pytest
 import asyncio
+import pytest_asyncio
+
+from datetime import timedelta
+from typing import AsyncIterator
 
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy import event
 from sqlalchemy.pool import StaticPool
 
-from src.database import Base, get_db_session
+# Set up test DB URL
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+DATABASE_URL = os.environ["DATABASE_URL"]
+
+# Must be imported after setting DATABASE_URL
+from src.database import sessionmanager, Base, get_db_session
 from src.auth import models
 from src.auth.service import create_access_token
 from src.main import create_app
 
-DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session")
 def event_loop():
     return asyncio.get_event_loop()
 
-@pytest.fixture()
+@pytest_asyncio.fixture()
 async def async_session() -> AsyncIterator[AsyncSession]:
     """Return the async test db session created for each test"""
     engine = create_async_engine(DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -34,7 +40,7 @@ async def async_session() -> AsyncIterator[AsyncSession]:
     async with async_session_factory() as session:
         yield session
 
-@pytest.fixture()
+@pytest_asyncio.fixture()
 async def client(async_session: AsyncSession) -> AsyncIterator[AsyncClient]:
     """Return a test client which can be used to send api requests"""
 
@@ -53,7 +59,7 @@ async def client(async_session: AsyncSession) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
 
-@pytest.fixture()
+@pytest_asyncio.fixture()
 async def user_headers(async_session: AsyncSession):
     """Return headers for a simple user"""
 
@@ -70,7 +76,7 @@ async def user_headers(async_session: AsyncSession):
 
     return {"Authorization": f"Bearer {token}"}
 
-@pytest.fixture()
+@pytest_asyncio.fixture()
 async def admin_headers(async_session: AsyncSession):
     """Return headers for an admin user"""
 
@@ -86,3 +92,4 @@ async def admin_headers(async_session: AsyncSession):
     token = create_access_token(admin_user.username, timedelta(hours=settings.ACCESS_TOKEN_EXPIRE_HOURS), settings)
 
     return {"Authorization": f"Bearer {token}"}
+

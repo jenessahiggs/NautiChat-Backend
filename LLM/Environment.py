@@ -8,7 +8,7 @@ class Environment:
         load_dotenv()
         self.onc_token = os.getenv("ONC_TOKEN")
         self.location_code = os.getenv("CAMBRIDGE_LOCATION_CODE")
-        self.model = "llama-3.1-8b-instant"
+        self.model = "llama-3.3-70b-versatile"
         self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
         self.qdrant_url = os.getenv("QDRANT_URL")
         self.collection_name = os.getenv("QDRANT_COLLECTION_NAME")

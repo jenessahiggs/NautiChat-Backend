@@ -2,8 +2,25 @@ toolDescriptions = [
     {
         "type": "function",
         "function": {
+            "name": "vectorDB",
+            "description": "Retrieves relevant documents from the vector database based on the user prompt including: sensor data, metadata, and more. Should call this function first to get relevant information from the database before calling other functions.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_prompt": {
+                        "type": "string",
+                        "description": "The user's query to retrieve relevant documents.",
+                    }
+                },
+                "required": ["user_prompt"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_properties_at_cambridge_bay",
-            "description": "Get a list of properties of data available at Cambridge Bay. The function returns a list of dictionaries. Each Item in the list includes:\n        - description (str): Description of the property. The description may have a colon in it.\n        - propertyCode (str): Property Code of the property\n",
+            "description": "Get a list of properties available at Cambridge Bay. The function returns a list of dictionaries. Each Item in the list includes:\n        - description (str): Description of the property. The description may have a colon in it.\n        - propertyCode (str): Property Code of the property\n",
             "parameters": {
                 "type": "object",
                 "properties": {},
@@ -49,20 +66,28 @@ toolDescriptions = [
         },
     },
     {
-            "type": "function",
-            "function": {
-                "name": "vectorDB",
-                "description": "Retrieves relevant documents from the vector database based on the user prompt.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "user_prompt": {
-                            "type": "string",
-                            "description": "The user's query to retrieve relevant documents.",
-                        }
+        "type": "function",
+        "function": {
+            "name": "get_scalar_data_by_device",
+            "description": "gets the scalar data for a device at cambridge bay over a specified time interval, given the device code and time range",
+            "parameters": {
+                "properties": {
+                    "deviceCode": {
+                        "type": "string",
+                        "description": "The device code for which scalar data is requested.",
                     },
-                    "required": ["user_prompt"],
+                    "dateFrom": {
+                        "type": "string",
+                        "description": "ISO 8601 start date (ex: '2016-06-01T00:00:00.000Z')",
+                    },
+                    "dateTo": {
+                        "type": "string",
+                        "description": "ISO 8601 end date (ex: '2016-09-30T23:59:59.999Z')",
+                    },
                 },
+                "required": ["deviceCode", "dateFrom", "dateTo"],
+                "type": "object",
             },
-        }
+        },
+    },
 ]

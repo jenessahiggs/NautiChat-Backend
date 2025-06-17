@@ -17,7 +17,8 @@ class LLM:
         , RAG_instance: RAG = None
     ):
         self.client = env.get_client()  # Get the Groq client from the environment
-        self.model = env.get_model()  # Get the model to use from the environment
+        #self.model = env.get_model()  # Get the model to use from the environment
+        self.model = "llama-3.1-8b-instant" #use this one when model limit is reached
         self.RAG_instance = RAG_instance if RAG_instance else RAG(env)  # Use provided RAG instance or create a new one
         self.available_functions = {
             "get_properties_at_cambridge_bay": get_properties_at_cambridge_bay,
@@ -48,11 +49,10 @@ class LLM:
         vectorDBResponse = self.RAG_instance.get_documents(user_prompt)
         if isinstance(vectorDBResponse, pd.DataFrame):
             if vectorDBResponse.empty:
-                vector_content = "No relevant information found in the database."
+                vector_content = ""
             else:
                 # Convert DataFrame to a more readable format
-                vector_content = "\nRelevant information from database:\n" + \
-                            vectorDBResponse.to_string(index=False)
+                vector_content = vectorDBResponse.to_string(index=False)
         else:
             vector_content = str(vectorDBResponse)
         messages.append({

@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_HOURS: int
     REDIS_PASSWORD: str
-    DATABASE_URL: str
+    SUPABASE_DB_URL: str
 
     model_config = SettingsConfigDict(env_file=env_file_location)
 

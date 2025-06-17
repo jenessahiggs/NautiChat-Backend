@@ -104,11 +104,11 @@ class DatabaseSessionManager:
 
 
 # NOTE: DataBase (Postgres) is async compatible
-# Load DATABASE_URL from environment variable
-DATABASE_URL = get_settings().DATABASE_URL
+# Load SUPABASE_DB_URL from environment variable
+SUPABASE_DB_URL = get_settings().SUPABASE_DB_URL
 
 # Create global session manager instance
-sessionmanager = DatabaseSessionManager(DATABASE_URL)
+sessionmanager = DatabaseSessionManager(SUPABASE_DB_URL)
 
 
 # FastAPI dependency for Endpoints

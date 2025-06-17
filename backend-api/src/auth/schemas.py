@@ -19,6 +19,6 @@ class CreateUserRequest(BaseModel):
 
 
 class Token(BaseModel):
-    """KWT Token Response"""
+    """JWT Token Response"""
     access_token: str
     token_type: str

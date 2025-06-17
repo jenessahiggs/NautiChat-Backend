@@ -12,10 +12,10 @@ from .models import Conversation as ConversationModel, Message as MessageModel, 
 async def create_conversation(
     current_user: UserOut,
     db: AsyncSession,
-    CreateConversationBody: CreateConversationBody,
+    create_conversation: CreateConversationBody,
 ) -> Conversation:
     """Create a conversation and store in db"""
-    conversation = ConversationModel(user_id=current_user.id, title=CreateConversationBody.title)
+    conversation = ConversationModel(user_id=current_user.id, title=create_conversation.title)
     
     # Add conversation to DB
     db.add(conversation)
@@ -57,7 +57,7 @@ async def get_conversation(
     return conversation
 
 async def generate_response(
-    LLMQuery: CreateLLMQuery,
+    llm_query: CreateLLMQuery,
     current_user: UserOut,
     db: AsyncSession,
 ) -> Message: 
@@ -65,7 +65,7 @@ async def generate_response(
     #TODO: Integrate LLM
 
     # Validate whether converstation exists or if current user has access to conversation
-    result = await db.execute(select(ConversationModel).where(ConversationModel.conversation_id == LLMQuery.conversation_id))
+    result = await db.execute(select(ConversationModel).where(ConversationModel.conversation_id == llm_query.conversation_id))
     conversation = result.scalar_one_or_none()
 
     if not conversation: 
@@ -81,10 +81,10 @@ async def generate_response(
 
     # Create Message to send to LLM  
     message = MessageModel(
-        conversation_id=LLMQuery.conversation_id, 
+        conversation_id=llm_query.conversation_id, 
         user_id=current_user.id, 
-        input=LLMQuery.input, 
-        response=f"LLM Response for: {LLMQuery.input}"
+        input=llm_query.input, 
+        response=f"LLM Response for: {llm_query.input}"
     )
 
     # Add message to DB

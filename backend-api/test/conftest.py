@@ -12,10 +12,10 @@ from sqlalchemy.pool import StaticPool
 
 # Set up test DB URL
 # TODO: Create a Postgres Test DB for thorough testing
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
-DATABASE_URL = os.environ["DATABASE_URL"]
+os.environ["SUPABASE_DB_URL"] = "sqlite+aiosqlite:///:memory:"
+SUPABASE_DB_URL = os.environ["SUPABASE_DB_URL"]
 
-# Must be imported after setting DATABASE_URL
+# Must be imported after setting SUPABASE_DB_URL
 from src.settings import get_settings
 from src.database import Base, get_db_session
 from src.auth import models
@@ -31,7 +31,7 @@ def event_loop():
 @pytest_asyncio.fixture()
 async def async_session() -> AsyncIterator[AsyncSession]:
     """Creates async test db session per test and resets"""
-    engine = create_async_engine(DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    engine = create_async_engine(SUPABASE_DB_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool)
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)

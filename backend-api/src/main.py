@@ -36,7 +36,7 @@ def create_app():
     # TODO: add frontend url to origins
     origins = ["http://localhost:3000"]
 
-    # Add CORS Middleware
+    # Add CORS and Rate Limit Middleware
     app.add_middleware(RateLimitMiddleware)
     app.add_middleware(
         CORSMiddleware,

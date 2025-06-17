@@ -19,10 +19,10 @@ router = APIRouter()
 async def create_conversation(
     current_user: Annotated[UserOut, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
-    CreateConversationBody: CreateConversationBody,
+    create_conversation: CreateConversationBody,
 ) -> Conversation:
     """Create a new conversation"""
-    return await service.create_conversation(current_user, db, CreateConversationBody)
+    return await service.create_conversation(current_user, db, create_conversation)
 
 
 @router.get("/conversations", response_model=List[Conversation])
@@ -46,12 +46,12 @@ async def get_conversation(
 
 @router.post("/messages", status_code=201, response_model=Message)
 async def generate_response(
-    LLMQuery: CreateLLMQuery,
+    llm_query: CreateLLMQuery,
     current_user: Annotated[UserOut, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> Message:
     """Send message to LLM which will generate a response"""
-    return await service.generate_response(LLMQuery, current_user, db)
+    return await service.generate_response(llm_query, current_user, db)
 
 
 @router.get("/messages/{message_id}", response_model=Message)

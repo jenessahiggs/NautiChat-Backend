@@ -8,15 +8,16 @@ from typing import AsyncIterator
 
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy import event
 from sqlalchemy.pool import StaticPool
 
 # Set up test DB URL
+# TODO: Create a Postgres Test DB for thorough testing
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 DATABASE_URL = os.environ["DATABASE_URL"]
 
 # Must be imported after setting DATABASE_URL
-from src.database import sessionmanager, Base, get_db_session
+from src.settings import get_settings
+from src.database import Base, get_db_session
 from src.auth import models
 from src.auth.service import create_access_token
 from src.main import create_app
@@ -24,11 +25,12 @@ from src.main import create_app
 
 @pytest_asyncio.fixture(scope="session")
 def event_loop():
+    """Tests share same asyncio loop"""
     return asyncio.get_event_loop()
 
 @pytest_asyncio.fixture()
 async def async_session() -> AsyncIterator[AsyncSession]:
-    """Return the async test db session created for each test"""
+    """Creates async test db session per test and resets"""
     engine = create_async_engine(DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool)
 
     async with engine.begin() as conn:
@@ -41,10 +43,10 @@ async def async_session() -> AsyncIterator[AsyncSession]:
         yield session
 
 @pytest_asyncio.fixture()
-async def client(async_session: AsyncSession) -> AsyncIterator[AsyncClient]:
+async def client(async_session: AsyncSession, request) -> AsyncIterator[AsyncClient]:
     """Return a test client which can be used to send api requests"""
 
-    async def override_get_db():
+    async def override_get_db_session():
         yield async_session
 
     test_app = create_app()
@@ -53,9 +55,9 @@ async def client(async_session: AsyncSession) -> AsyncIterator[AsyncClient]:
     if request.node.get_closest_marker("use_middleware") is None:
         test_app.user_middleware = []
 
-    test_app.dependency_overrides[get_db] = override_get_db
+    test_app.dependency_overrides[get_db_session] = override_get_db_session
 
-    transport = ASGITransport(app=app)
+    transport = ASGITransport(app=test_app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
 

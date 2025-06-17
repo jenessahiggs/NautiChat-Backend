@@ -1,12 +1,17 @@
 import contextlib
+import ssl
 
 from typing import Any, AsyncIterator
+from uuid import uuid4
+from sqlalchemy.pool import NullPool
 
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.engine.url import make_url
-from src.settings import get_settings
 from redis.asyncio import Redis
 
+from src.settings import get_settings
+
+# Building async engine & sessionmaker
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
     AsyncSession,
@@ -15,14 +20,9 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-# Note: DB is async compatible
-# Load DATABASE_URL from environment variable
-DATABASE_URL = get_settings().SUPABASE_DB_URL
-
-# Base class for all ORM models
+# Base class for all ORM models (Helps with Lazy Loading)
 class Base(AsyncAttrs, DeclarativeBase):
     pass
-
 
 class DatabaseSessionManager:
     """
@@ -39,10 +39,23 @@ class DatabaseSessionManager:
         url_obj = make_url(db_url)
         is_postgres = url_obj.drivername.startswith("postgresql")
 
-        connect_args = {"sslmode": "require"} if is_postgres else {}
+        if is_postgres:
+            # TODO: Create an SSL context for asyncpg 
+            # ssl_context = ssl.create_default_context()
+            # connect_args = {"ssl": ssl_context}
+
+            # 
+            connect_args = {
+                "ssl": False, 
+                "statement_cache_size": 0,  # Disable asyncpg prepared statement cache
+                "prepared_statement_name_func": lambda: f"__asyncpg_{uuid4()}__",
+                }
+        else:
+            connect_args = {}
 
         self._engine = create_async_engine(
             db_url,
+            poolclass=NullPool, # Optional: disables SQLAlchemy connection pool, relying on Supavisor (From SupaBase)
             connect_args=connect_args,
             **engine_kwargs,
         )
@@ -90,20 +103,21 @@ class DatabaseSessionManager:
             await session.close()
 
 
-# Read database URL from environment variable
-DATABASE_URL = os.getenv("DATABASE_URL")
+# NOTE: DataBase (Postgres) is async compatible
+# Load DATABASE_URL from environment variable
+DATABASE_URL = get_settings().DATABASE_URL
 
 # Create global session manager instance
 sessionmanager = DatabaseSessionManager(DATABASE_URL)
 
 
-# FastAPI dependency
+# FastAPI dependency for Endpoints
 async def get_db_session() -> AsyncIterator[AsyncSession]:
     """Dependency that yields a database session"""
     async with sessionmanager.session() as session:
         yield session
 
-
+# Creates an async Redis Client
 def init_redis():
     return Redis(
         host="redis-13649.crce199.us-west-2-2.ec2.redns.redis-cloud.com",

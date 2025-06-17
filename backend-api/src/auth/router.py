@@ -19,25 +19,27 @@ router = APIRouter()
 @router.post("/login", response_model=Token)
 async def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    settings: Annotated[config.Settings, Depends(get_settings)],
+    settings: Annotated[Settings, Depends(get_settings)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> Token:
+    """Authenticate user trying to login"""
     return await service.login_user(form_data, settings, db)
 
 
 @router.post("/register", status_code=201, response_model=Token)
 async def register_user(
     user_request: CreateUserRequest,
-    settings: Annotated[config.Settings, Depends(get_settings)],
+    settings: Annotated[Settings, Depends(get_settings)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> Token:
+    """Register a new user"""
     return await service.register_user(user_request, settings, db)
 
 
 @router.get("/me")
 async def get_me(user: Annotated[User, Depends(get_current_user)]) -> UserOut:
     """Get the current user"""
-    # get_current_user is called automatically because of the Depends()
+    # Uses get_current_user() dependency to grab user
     return user
 
 

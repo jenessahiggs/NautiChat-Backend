@@ -23,7 +23,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def get_password_hash(password: str) -> str:
     """Hash a password using bcrypt"""
-    # Note: This is a sync function that gets used in async
     return pwd_context.hash(password)
 
 def create_access_token(
@@ -53,11 +52,14 @@ async def get_user(username: str, db: AsyncSession) -> Optional[UserModel]:
 async def get_user_by_token(
     token: str, settings: Settings, db: AsyncSession
 ) -> UserModel:
+    """Validates token (of user) before looking up user"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+    # Validate token of user
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         username = payload.get("sub")
@@ -66,6 +68,7 @@ async def get_user_by_token(
     except InvalidTokenError:
         raise credentials_exception
     
+    # Look up user
     user = await get_user(username, db)
     if user is None:
         raise credentials_exception

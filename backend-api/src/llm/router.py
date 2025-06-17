@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, Body
+from typing import List, Annotated
+
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from typing import List, Annotated, Optional
-
+# Dependencies
 from src.auth.dependencies import get_current_user
 from src.database import get_db_session
 

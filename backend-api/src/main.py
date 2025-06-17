@@ -1,16 +1,17 @@
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager # Used to manage async app startup/shutdown events
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware # Enables frontend-backend communications via CORS
 
 from src.database import sessionmanager, Base, init_redis
 
-from src.admin.router import router as admin_router
 from src.auth import models  # noqa
-from src.auth.router import router as auth_router
 from src.llm import models  # noqa
+
+from src.admin.router import router as admin_router
+from src.auth.router import router as auth_router
 from src.llm.router import router as llm_router
-from src.middleware import RateLimitMiddleware
+from src.middleware import RateLimitMiddleware # Custom middleware for rate limiting
 
 
 @asynccontextmanager
@@ -19,10 +20,12 @@ async def lifespan(app: FastAPI):
     async with sessionmanager._engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+    # Initialize Redis Client
     app.state.redis_client = init_redis()
     
     yield
-    # Close connection to database
+    # Close connection to database and Redis Connection
+    # TODO? Add try/except if an exception prevents cleanup
     await sessionmanager.close()
     await app.state.redis_client.aclose()
 
@@ -30,10 +33,10 @@ async def lifespan(app: FastAPI):
 def create_app():
     app = FastAPI(lifespan=lifespan)
 
-    # TO DO: add frontend url to origins
+    # TODO: add frontend url to origins
     origins = ["http://localhost:3000"]
 
-    # Middleware
+    # Add CORS Middleware
     app.add_middleware(RateLimitMiddleware)
     app.add_middleware(
         CORSMiddleware,
@@ -43,7 +46,7 @@ def create_app():
         allow_headers=["*"],
     )
 
-    # Add routers
+    # Register Routes from modules (auth, llm, admin)
     app.include_router(auth_router, prefix="/auth", tags=["auth"])
     app.include_router(llm_router, prefix="/llm", tags=["llm"])
     app.include_router(admin_router, prefix="/admin", tags=["admin"])

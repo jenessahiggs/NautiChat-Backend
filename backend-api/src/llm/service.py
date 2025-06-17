@@ -1,10 +1,9 @@
+from typing import List
 
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-
-from typing import List
 
 from src.auth.schemas import UserOut
 from .schemas import Conversation, Message, Feedback, CreateLLMQuery, CreateConversationBody
@@ -15,6 +14,7 @@ async def create_conversation(
     db: AsyncSession,
     CreateConversationBody: CreateConversationBody,
 ) -> Conversation:
+    """Create a conversation and store in db"""
     conversation = ConversationModel(user_id=current_user.id, title=CreateConversationBody.title)
     
     # Add conversation to DB
@@ -34,7 +34,7 @@ async def get_conversations(
     current_user: UserOut,
     db: AsyncSession,
 ) -> List[Conversation]:
-    # Async db query
+    """Get all conversations (of the user)"""
     stmt = select(ConversationModel).options(selectinload(ConversationModel.messages))
     query = stmt.where(ConversationModel.user_id == current_user.id).order_by(ConversationModel.conversation_id.desc())
     result = await db.execute(query)
@@ -45,6 +45,7 @@ async def get_conversation(
     current_user: UserOut,
     db: AsyncSession,
 ) -> Conversation:
+    """Get a single conversation given a conv_id (of the user)"""
     stmt = select(ConversationModel).options(selectinload(ConversationModel.messages))
     query = stmt.where(ConversationModel.user_id == current_user.id).where(ConversationModel.conversation_id == conversation_id)
     result = await db.execute(query)
@@ -59,7 +60,10 @@ async def generate_response(
     LLMQuery: CreateLLMQuery,
     current_user: UserOut,
     db: AsyncSession,
-) -> Message:  
+) -> Message: 
+    """Validate user creating new Message that will be sent to LLM"""
+    #TODO: Integrate LLM
+
     # Validate whether converstation exists or if current user has access to conversation
     result = await db.execute(select(ConversationModel).where(ConversationModel.conversation_id == LLMQuery.conversation_id))
     conversation = result.scalar_one_or_none()
@@ -94,6 +98,8 @@ async def get_message(
     current_user: UserOut,
     db: AsyncSession,
 ) -> Message:
+    """Get a single message given a message_id"""
+    #TODO: Must check if message belongs to current user
     query = select(MessageModel).where(MessageModel.message_id == message_id)
     result = await db.execute(query)
     message = result.scalar_one_or_none()
@@ -111,6 +117,8 @@ async def submit_feedback(
     current_user: UserOut,
     db: AsyncSession,
 ) -> Message:
+    """Create Feedback entry for Message (or update current Feedback)"""
+    #TODO: Check that message belongs to current user
     # Validate whether message exists or if current user has access to message
     query = select(MessageModel).where(MessageModel.message_id == message_id)
     result = await db.execute(query)

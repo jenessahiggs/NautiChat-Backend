@@ -1,24 +1,24 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
+class UserOut(BaseModel):
+    """Data safe to return to user"""
+    # Allows model to be populated from SQLAlchemy ORM objects
+    model_config = ConfigDict(from_attributes=True)
 
-# Data safe to return to user
-class User(BaseModel):
-    user_id: int
+    id: int
     username: str
     onc_token: str
     is_admin: bool = False
 
 
-class UserInDB(User):
-    hashed_password: str
-
-
 class CreateUserRequest(BaseModel):
+    """Payload for Registration"""
     username: str
     password: str
     onc_token: str
 
 
 class Token(BaseModel):
+    """JWT Token Response"""
     access_token: str
     token_type: str

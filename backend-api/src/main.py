@@ -1,3 +1,4 @@
+import traceback
 from contextlib import asynccontextmanager # Used to manage async app startup/shutdown events
 
 from fastapi import FastAPI
@@ -23,7 +24,8 @@ async def lifespan(app: FastAPI):
             await conn.run_sync(Base.metadata.create_all)
         print("DB is ready")
     except Exception as e:
-        print(f"DB error: {e}")
+        print("DB error:", e)
+        traceback.print_exc()
 
     try:
         print("Initializing Redis...")
@@ -32,6 +34,8 @@ async def lifespan(app: FastAPI):
         print("Redis is ready")
     except Exception as e:
         print(f"Redis error: {e}")
+        print("DB error:", e)
+        traceback.print_exc()
     
     yield
     # Close connection to database and Redis Connection

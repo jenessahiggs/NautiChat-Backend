@@ -44,6 +44,21 @@ class LLM:
                 "content": user_prompt,
             }
         ]
+
+        print("Calling vectorDB")
+        vectorDBResponse = self.RAG_instance.get_documents(user_prompt)
+        if isinstance(vectorDBResponse, pd.DataFrame):
+            if vectorDBResponse.empty:
+                vector_content = ""
+            else:
+                # Convert DataFrame to a more readable format
+                vector_content = vectorDBResponse.to_string(index=False)
+        else:
+            vector_content = str(vectorDBResponse)
+        messages.append({
+            "role": "system",
+            "content": vector_content
+            }) 
         
         response = self.client.chat.completions.create(
             model=self.model,  # LLM to use
@@ -65,24 +80,6 @@ class LLM:
                 # print(tool_call)
                 # print()
                 function_name = tool_call.function.name
-
-                if (function_name == "vectorDB"):
-                    print("Calling vectorDB")
-                    vectorDBResponse = self.RAG_instance.get_documents(user_prompt)
-                    if isinstance(vectorDBResponse, pd.DataFrame):
-                        if vectorDBResponse.empty:
-                            vector_content = "No relevant information found in the database."
-                        else:
-                            # Convert DataFrame to a more readable format
-                            vector_content = "\nRelevant information from database:\n" + \
-                                        vectorDBResponse.to_string(index=False)
-                    else:
-                        vector_content = str(vectorDBResponse)
-                    messages.append({
-                        "role": "system",
-                        "content": vector_content
-                        }) 
-                    continue  # Skip to next tool call if vectorDB is called
 
                 if function_name in self.available_functions:
                     function_args = json.loads(tool_call.function.arguments)

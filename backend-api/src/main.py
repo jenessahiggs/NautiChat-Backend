@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
         print("Redis is ready")
     except Exception as e:
         print(f"Redis error: {e}")
-        print("DB error:", e)
+        print("Redis error:", e)
         traceback.print_exc()
     
     yield

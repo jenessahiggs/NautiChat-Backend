@@ -2,8 +2,8 @@ import pandas as pd
 import asyncio
 from groq import Groq
 import json
-import os
 import pprint
+from onc import ONC
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
@@ -16,11 +16,15 @@ from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import CrossEncoderReranker
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from pathlib import Path
+
 # Load API key and location code from .env
-env_path = Path(__file__).resolve().parent.parent / '.env'
+env_path = Path(__file__).resolve().parent / ".env"
 load_dotenv(dotenv_path=env_path)
 ONC_TOKEN = os.getenv("ONC_TOKEN")
-CAMBRIDGE_LOCATION_CODE = os.getenv("CAMBRIDGE_LOCATION_CODE") # Change for a different location
+CAMBRIDGE_LOCATION_CODE = os.getenv("CAMBRIDGE_LOCATION_CODE")  # Change for a different location
+onc = ONC(ONC_TOKEN)
+cambridgeBayLocations = ["CBY", "CBYDS", "CBYIP", "CBYIJ", "CBYIU", "CBYSP", "CBYSS", "CBYSU", "CF240"]
+
 
 async def get_properties_at_cambridge_bay():
     """Get a list of properties of data available at Cambridge Bay
@@ -55,10 +59,9 @@ async def get_daily_sea_temperature_stats_cambridge_bay(day_str: str):
     # Parse into datetime object to add 1 day (accounts for 24-hour period)
     date_to = datetime.strptime(day_str, "%Y-%m-%d") + timedelta(days=1)
     date_to_str: str = date_to.strftime("%Y-%m-%d")  # Convert back to string
-    print(day_str)
 
     async with httpx.AsyncClient() as client:
-        # Get data from ONC API
+        # Get the data from ONC API
         temp_api = f"https://data.oceannetworks.ca/api/scalardata/location?locationCode={CAMBRIDGE_LOCATION_CODE}&deviceCategoryCode=CTD&propertyCode=seawatertemperature&dateFrom={day_str}&dateTo={date_to_str}&rowLimit=80000&outputFormat=Object&resamplePeriod=86400&token={ONC_TOKEN}"
         response = await client.get(temp_api)
         response.raise_for_status()  # Error handling
@@ -78,3 +81,52 @@ async def get_daily_sea_temperature_stats_cambridge_bay(day_str: str):
             "daily_avg": round(data["value"], 2),
         }
     )
+
+
+async def get_deployed_devices_over_time_interval(dateFrom: str, dateTo: str):
+    """
+    Get the devices at cambridge bay deployed over the specified time interval including sublocations
+    Returns:
+        JSON string: List of deployed devices and their metadata Each item includes:
+            - begin (str): deployment start time
+            - end (str): deployment end time
+            - deviceCode (str)
+            - deviceCategoryCode (str)
+            - locationCode (str)
+            - citation (dict): citation metadata (includes description, doi, etc)
+    Args:
+        dateFrom (str): ISO 8601 start date (ex: '2016-06-01T00:00:00.000Z')
+        dateTo (str): ISO 8601 end date (ex: '2016-09-30T23:59:59.999Z')
+    """
+    deployedDevices = []
+    for locationCode in cambridgeBayLocations:
+        params = {
+            "locationCode": locationCode,
+            "dateFrom": dateFrom,
+            "dateTo": dateTo,
+        }
+        try:
+            response = onc.getDeployments(params)
+        except Exception as e:
+            if e.response.status_code == 404:
+                # print(f"Warning: No deployments found for locationCode {locationCode}")
+                continue
+            else:
+                raise  # re-raise if different error
+        for deployment in response:
+            if deployment is None:
+                continue
+            device_info = {
+                "begin": deployment["begin"],
+                "end": deployment["end"],
+                "deviceCode": deployment["deviceCode"],
+                "deviceCategoryCode": deployment["deviceCategoryCode"],
+                "locationCode": deployment["locationCode"],
+                "citation": deployment["citation"],
+            }
+            deployedDevices.append(device_info)
+
+    if deployedDevices == []:
+        return json.dumps({"result": "No data available for the given date."})
+
+    return json.dumps(deployedDevices)

@@ -1,105 +1,75 @@
+from typing import List, Annotated
+
 from fastapi import APIRouter, Depends
-from src.auth.schemas import User
+from sqlalchemy.ext.asyncio import AsyncSession
+
+# Dependencies
 from src.auth.dependencies import get_current_user
+from src.database import get_db_session
 
-from typing import List, Annotated, Optional
+from src.auth.schemas import UserOut
+from .schemas import Conversation, Message, Feedback, CreateLLMQuery, CreateConversationBody
+from . import service
 
-from .schemas import (
-    Conversation,
-    Message,
-    Feedback
-)
 
 router = APIRouter()
 
-@router.post("/conversations", status_code=201)
-def create_conversation(
-    current_user: Annotated[User, Depends(get_current_user)],
-    title: Optional[str] = None,
+
+@router.post("/conversations", status_code=201, response_model=Conversation)
+async def create_conversation(
+    current_user: Annotated[UserOut, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    create_conversation: CreateConversationBody,
 ) -> Conversation:
     """Create a new conversation"""
-    return Conversation(
-        conversation_id=1, user_id=current_user.user_id, title=title, messages=[]
-    )
+    return await service.create_conversation(current_user, db, create_conversation)
 
 
-@router.get("/conversations")
-def get_conversations(
-    current_user: Annotated[User, Depends(get_current_user)],
+@router.get("/conversations", response_model=List[Conversation])
+async def get_conversations(
+    current_user: Annotated[UserOut, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> List[Conversation]:
-    """Get a list of the users conversations"""
-    return [
-        Conversation(
-            conversation_id=1,
-            user_id=current_user.user_id,
-            title="Conversation 1",
-            messages=[],
-        ),
-        Conversation(
-            conversation_id=2,
-            user_id=current_user.user_id,
-            title="Conversation 2",
-            messages=[],
-        ),
-    ]
+    """Get a list of the users conversations in descending order"""
+    return await service.get_conversations(current_user, db)
 
 
-@router.get("/conversations/{conversation_id}")
-def get_conversation(
+@router.get("/conversations/{conversation_id}", response_model=Conversation)
+async def get_conversation(
     conversation_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[UserOut, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> Conversation:
     """Get a conversation"""
-    return Conversation(
-        conversation_id=conversation_id,
-        user_id=current_user.user_id,
-        messages=[],
-    )
+    return await service.get_conversation(conversation_id, current_user, db)
 
 
-@router.post("/messages", status_code=201)
-def generate_response(
-    input: str,
-    conversation_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
+@router.post("/messages", status_code=201, response_model=Message)
+async def generate_response(
+    llm_query: CreateLLMQuery,
+    current_user: Annotated[UserOut, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> Message:
-    """Get a response from the LLM"""
-    return Message(
-        message_id=1,
-        conversation_id=conversation_id,
-        user_id=current_user.user_id,
-        input=input,
-        response=f"Response for: {input}",
-    )
+    """Send message to LLM which will generate a response"""
+    return await service.generate_response(llm_query, current_user, db)
 
 
-@router.get("/messages/{message_id}")
-def get_message(
+@router.get("/messages/{message_id}", response_model=Message)
+async def get_message(
     message_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[UserOut, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> Message:
     """Get a message"""
-    return Message(
-        message_id=message_id,
-        conversation_id=1,
-        user_id=current_user.user_id,
-        input=f"Input for message {message_id}",
-        response=f"Response for message {message_id}",
-    )
+    return await service.get_message(message_id, current_user, db)
 
 
-@router.post("/messages/{message_id}/feedback")
-def submit_feedback(
+@router.patch("/messages/{message_id}/feedback", response_model=Message)
+async def submit_feedback(
     message_id: int,
     feedback: Feedback,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[UserOut, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> Message:
-    """Submit feedback for a message"""
-    return Message(
-        message_id=message_id,
-        conversation_id=1,
-        user_id=current_user.user_id,
-        input=f"Input for message {message_id}",
-        response=f"Response for message {message_id}",
-        feedback=feedback,
-    )
+    """Update the feedback in the Message model"""
+    return await service.submit_feedback(message_id, feedback, current_user, db)

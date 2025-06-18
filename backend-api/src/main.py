@@ -16,12 +16,22 @@ from src.middleware import RateLimitMiddleware # Custom middleware for rate limi
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create tables on startup using async engine
-    async with sessionmanager._engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        print("Initializing DB...")
+        # Create tables on startup using async engine
+        async with sessionmanager._engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("DB is ready")
+    except Exception as e:
+        print(f"DB error: {e}")
 
-    # Initialize Redis Client
-    app.state.redis_client = init_redis()
+    try:
+        print("Initializing Redis...")
+        # Initialize Redis Client
+        app.state.redis_client = init_redis()
+        print("Redis is ready")
+    except Exception as e:
+        print(f"Redis error: {e}")
     
     yield
     # Close connection to database and Redis Connection

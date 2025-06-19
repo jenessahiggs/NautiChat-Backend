@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
     try:
         print("Initializing DB...")
         # Create tables on startup using async engine
-        async with sessionmanager._engine.begin() as conn:
+        async with sessionmanager.connect() as conn:
             await conn.run_sync(Base.metadata.create_all)
         print("DB is ready")
     except Exception as e:

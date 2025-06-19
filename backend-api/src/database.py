@@ -55,7 +55,7 @@ class DatabaseSessionManager:
 
         self._engine = create_async_engine(
             db_url,
-            poolclass=NullPool, # Optional: disables SQLAlchemy connection pool, relying on Supavisor (From SupaBase)
+            #poolclass=NullPool, # Optional: disables SQLAlchemy connection pool, relying on Supavisor (From SupaBase)
             connect_args=connect_args,
             **engine_kwargs,
         )

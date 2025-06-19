@@ -29,7 +29,8 @@ async def lifespan(app: FastAPI):
             logger.info("Initializing database session manager...")
             session_manager = DatabaseSessionManager(get_settings().SUPABASE_DB_URL)
             app.state.session_manager = session_manager
-            assert session_manager._engine is not None, "Session manager engine is not initialized"
+            if session_manager._engine is None:
+                raise RuntimeError("Session manager engine is not initialized")
             async with session_manager.connect() as conn:
                 await conn.run_sync(Base.metadata.create_all)
         # Initialize Redis client

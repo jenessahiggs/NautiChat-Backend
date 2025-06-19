@@ -25,18 +25,18 @@ async def lifespan(app: FastAPI):
 
     # Create tables on startup using async engine
     try:
-        async with asyncio.timeout(20):
-            logger.info("Initializing database session manager...")
-            session_manager = DatabaseSessionManager(get_settings().SUPABASE_DB_URL)
-            app.state.session_manager = session_manager
-            if session_manager._engine is None:
-                raise RuntimeError("Session manager engine is not initialized")
-            async with session_manager.connect() as conn:
-                await conn.run_sync(Base.metadata.create_all)
+        # async with asyncio.timeout(20):
+        logger.info("Initializing database session manager...")
+        session_manager = DatabaseSessionManager(get_settings().SUPABASE_DB_URL)
+        app.state.session_manager = session_manager
+        if session_manager._engine is None:
+            raise RuntimeError("Session manager engine is not initialized")
+        async with session_manager.connect() as conn:
+            await conn.run_sync(Base.metadata.create_all)
         # Initialize Redis client
-        async with asyncio.timeout(20):
-            logger.info("Initializing Redis client...")
-            app.state.redis_client = await init_redis()
+        # async with asyncio.timeout(20):
+        logger.info("Initializing Redis client...")
+        app.state.redis_client = await init_redis()
 
         yield
     finally:

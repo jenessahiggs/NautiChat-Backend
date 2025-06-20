@@ -50,7 +50,7 @@ class RAG:
         # Reranker (from RerankerNoGroq notebook)
         print("Creating CrossEncoder model...")
         self.model = HuggingFaceCrossEncoder(model_name="BAAI/bge-reranker-base")
-        self.compressor = CrossEncoderReranker(model=self.model, top_n=5)
+        self.compressor = CrossEncoderReranker(model=self.model, top_n=15)
 
     def get_documents(self, question: str):
     
@@ -81,6 +81,18 @@ class RAG:
         # Rerank using the CrossEncoderReranker
         reranked_documents = self.compressor.compress_documents(documents, query=question)
 
-        compression_contents = [doc.page_content for doc in reranked_documents]
+        #Ensure there is only a maximum of around 2000 tokens of data
+        max_tokens = 2000
+        total_tokens = 0
+        selected_docs = []
+
+        for doc in reranked_documents:
+            approx_tokens = len(doc.page_content) // 4
+            if total_tokens + approx_tokens > max_tokens:
+                break
+            selected_docs.append(doc)
+            total_tokens += approx_tokens
+
+        compression_contents = [doc.page_content for doc in selected_docs]
         df = pd.DataFrame({"contents": compression_contents})
         return df

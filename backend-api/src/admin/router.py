@@ -35,7 +35,7 @@ async def get_all_messages(
 
 @router.get("/messages/clustered")
 async def get_clustered_messages(
-        _: Annotated[schemas.UserOut, Depends(get_admin_user)],
+        _: Annotated[UserOut, Depends(get_admin_user)],
         db: Annotated[AsyncSession, Depends(get_db_session)],
 ):
     """Cluster all message inputs using HDBSCAN"""
@@ -50,7 +50,7 @@ async def get_clustered_messages(
 
     # embed inputs
     model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
-    embeddings = model.encode(inputs, convert_to_numpy=True, show_progress_bar=True)
+    embeddings = model.encode(inputs, convert_to_numpy=True, show_progress_bar=False)
 
     # cluster with hdbscan
     clusterer = hdbscan.HDBSCAN(min_cluster_size=3, min_samples=2, metric='euclidean')

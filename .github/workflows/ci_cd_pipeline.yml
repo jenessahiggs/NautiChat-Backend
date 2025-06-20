@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_DB_URL: "${{ secrets.SUPABASE_DB_URL }}"
       SECRET_KEY: ci_dummy_key
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_HOURS: "24"
@@ -53,9 +53,13 @@ jobs:
       - uses: docker/build-push-action@v5
         with:
           context: .
-          push: false
           platforms: linux/amd64
-          tags: temp/test-image:pr-${{ github.sha }}
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max #    ^
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
   # Build + Push
   build:
@@ -86,13 +90,13 @@ jobs:
       - uses: docker/build-push-action@v5
         with:
           context: .
+          platforms: linux/amd64
           push: true
-          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
           tags: |
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
-          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
-          cache-to:   type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
 
   # Deploy
   deploy:
@@ -118,7 +122,7 @@ jobs:
           flags: |
             --allow-unauthenticated
           env_vars: |
-            SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL }}
+            SUPABASE_DB_URL: "${{ secrets.SUPABASE_DB_URL }}"
             SECRET_KEY=${{ vars.SECRET_KEY }}
             ALGORITHM=${{ vars.ALGORITHM }}
             ACCESS_TOKEN_EXPIRE_HOURS=${{ vars.ACCESS_TOKEN_EXPIRE_HOURS }}

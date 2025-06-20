@@ -14,7 +14,7 @@ from src.llm import models  # noqa
 from src.admin.router import router as admin_router
 from src.auth.router import router as auth_router
 from src.llm.router import router as llm_router
-from src.database import Base, DatabaseSessionManager, init_redis
+from src.database import DatabaseSessionManager, init_redis
 from src.middleware import RateLimitMiddleware  # Custom middleware for rate limiting
 from src.settings import get_settings  # Settings management for environment variables
 
@@ -27,34 +27,15 @@ async def lifespan(app: FastAPI):
 
     # Connect to Supabase Postgres as async engine
     try:
-        # async with asyncio.timeout(20):
-        logger.info("Initializing database session manager...")
+        # Setup up database session manager
+        logger.info("Initializing Session Manager...")
         session_manager = DatabaseSessionManager(get_settings().SUPABASE_DB_URL)
-        app.state.session_manager = session_manager
-        
-        if session_manager._engine is None:
-            raise RuntimeError("Session manager engine is not initialized")
-        
-        # Database connectivity check
-        try:
-            async with session_manager.connect() as conn:
-                result = await conn.execute(text("SELECT 1"))
-                scalar_result = result.scalar_one_or_none()
-                if scalar_result != 1:
-                    raise RuntimeError("Unexpected DB result")
-                logger.info("Database connectivity check passed.")
-        except Exception as e:
-            logger.error(f"Database connectivity check failed: {e}")
-            raise
-        
+        app.state.session_manager = session_manager 
         # Initialize Redis client
         # async with asyncio.timeout(20):
         logger.info("Initializing Redis client...")
         app.state.redis_client = await init_redis()
-
         yield
-
-        logger.info("App startup complete")
     finally:
         # Close connection to database and Redis Connection
         if hasattr(app.state, "session_manager"):

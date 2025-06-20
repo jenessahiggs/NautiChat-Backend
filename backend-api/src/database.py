@@ -108,7 +108,6 @@ class DatabaseSessionManager:
         finally:
             await session.close()
 
-
 # FastAPI dependency for Endpoints
 async def get_db_session(request: Request) -> AsyncIterator[AsyncSession]:
     """Dependency that yields a database session"""

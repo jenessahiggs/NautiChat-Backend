@@ -76,7 +76,7 @@ class LLM:
             )
             #print("resp:", response)
             response_message = response.choices[0].message
-            print(vector_content)
+            # print(vector_content)
             tool_calls = response_message.tool_calls
             # print(tool_calls)
             if tool_calls:

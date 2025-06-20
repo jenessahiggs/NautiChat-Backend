@@ -52,12 +52,7 @@ async def test_admin_endpoint_as_admin(client: AsyncClient, async_session: Async
     # recent messages first
     assert schemas.Message.model_validate(data[0]).conversation_id == message2.conversation_id
     assert schemas.Message.model_validate(data[1]).conversation_id == message1.conversation_id
-    response = await client.get("/admin/messages/clustered", headers=admin_headers)
 
-    assert response.status_code == 200
-    clusters = response.json()
-    print(clusters)
-    assert isinstance(clusters, dict)
 
 @pytest.mark.asyncio
 async def test_clustered_messages_returns_valid_json(client: AsyncClient, async_session: AsyncSession, admin_headers):

@@ -2,9 +2,9 @@ from langchain_community.vectorstores import Qdrant
 from qdrant_client import QdrantClient
 from langchain.embeddings.base import Embeddings
 from sentence_transformers import SentenceTransformer
-from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import CrossEncoderReranker
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+from langchain_core.documents import Document
 from qdrant_client.http.models import VectorParams, Distance
 import pandas as pd
 from Environment import Environment
@@ -46,20 +46,41 @@ class RAG:
         )
         # Qdrant Retriever
         print("Creating Qdrant retriever...")
-        self.retriever = self.qdrant.as_retriever(search_kwargs={"k": 3})
+        self.retriever = self.qdrant.as_retriever(search_kwargs={"k": 100})
         # Reranker (from RerankerNoGroq notebook)
         print("Creating CrossEncoder model...")
         self.model = HuggingFaceCrossEncoder(model_name="BAAI/bge-reranker-base")
-        self.compressor = CrossEncoderReranker(model=self.model, top_n=3)
-        print("Creating ContextualCompressionRetriever...")
-        self.compression_retriever = ContextualCompressionRetriever(
-            base_compressor=self.compressor, base_retriever=self.retriever
-        )
+        self.compressor = CrossEncoderReranker(model=self.model, top_n=5)
 
     def get_documents(self, question: str):
-        compression_documents = self.compression_retriever.invoke(
-            question
-        )  # If no data found needs to still handle empty list.
-        compression_contents = [doc.page_content for doc in compression_documents]
+    
+        query_embedding = self.embedding.embed_query(question)
+        search_results = self.qdrant_client.search(
+            collection_name=self.collection_name,
+            query_vector=query_embedding,
+            limit=100,  # same as k in retriever
+            with_payload=True,
+            with_vectors=False
+        )
+
+        # Filter results by score threshold
+        filtered_hits = [hit for hit in search_results if hit.score >= 0.4]
+
+        documents = [
+            Document(
+                page_content=hit.payload["text"],
+                metadata={"score": hit.score}
+            )
+            for hit in filtered_hits
+        ]        
+
+        # No documents were above threshold
+        if documents == []:
+            return pd.DataFrame({"contents": []})
+
+        # Rerank using the CrossEncoderReranker
+        reranked_documents = self.compressor.compress_documents(documents, query=question)
+
+        compression_contents = [doc.page_content for doc in reranked_documents]
         df = pd.DataFrame({"contents": compression_contents})
         return df

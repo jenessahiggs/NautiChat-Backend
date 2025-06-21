@@ -9,6 +9,8 @@ from sqlalchemy.engine.url import make_url
 from sqlalchemy.pool import AsyncAdaptedQueuePool
 from sqlalchemy.orm import DeclarativeBase
 
+from settings import get_settings
+
 # Building async engine & sessionmaker
 from sqlalchemy.ext.asyncio import (
     AsyncAttrs,

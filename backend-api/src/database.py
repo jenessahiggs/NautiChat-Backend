@@ -1,25 +1,26 @@
 import contextlib
-
+import logging
 from typing import Any, AsyncIterator
 from uuid import uuid4
-from sqlalchemy.pool import NullPool
 
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.engine.url import make_url
+from fastapi import Request
 from redis.asyncio import Redis
-
-from src.settings import get_settings
+from sqlalchemy.engine.url import make_url
 
 # Building async engine & sessionmaker
 from sqlalchemy.ext.asyncio import (
+    AsyncAttrs,
     AsyncConnection,
     AsyncSession,
-    AsyncAttrs,
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import AsyncAdaptedQueuePool
 
-from fastapi import Request
+from src.settings import get_settings
+
+logger = logging.getLogger("uvicorn.error")
 
 
 # Base class for all ORM models (Helps with Lazy Loading)
@@ -59,13 +60,14 @@ class DatabaseSessionManager:
         else:
             connect_args = {}
 
+        logger.info("Creating async engine")
         self._engine = create_async_engine(
             db_url,
-            poolclass=NullPool,  # Optional: disables SQLAlchemy connection pool, relying on Supavisor (From SupaBase)
+            poolclass=AsyncAdaptedQueuePool,  # Optional: disables SQLAlchemy connection pool, relying on Supavisor (From SupaBase)
             connect_args=connect_args,
             **engine_kwargs,
         )
-
+        logger.info("Creating async sessionmaker")
         self._sessionmaker = async_sessionmaker(
             bind=self._engine,
             expire_on_commit=False,

@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager  # Used to manage async app startup/s
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware  # Enables frontend-backend communications via CORS
 
+from sqlalchemy import text
+
 # Need to import the models in the same module that Base is defined to ensure they are registered with SQLAlchemy
 from src.auth import models  # noqa
 from src.llm import models  # noqa
@@ -12,7 +14,7 @@ from src.llm import models  # noqa
 from src.admin.router import router as admin_router
 from src.auth.router import router as auth_router
 from src.llm.router import router as llm_router
-from src.database import Base, DatabaseSessionManager, init_redis
+from src.database import DatabaseSessionManager, init_redis
 from src.middleware import RateLimitMiddleware  # Custom middleware for rate limiting
 from src.settings import get_settings  # Settings management for environment variables
 
@@ -23,25 +25,19 @@ logger = logging.getLogger("uvicorn.error")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
-    # Create tables on startup using async engine
+    # Connect to Supabase Postgres as async engine
     try:
-        # Initialize Redis client
         async with asyncio.timeout(20):
+            # Setup up database session manager
+            logger.info("Initializing Session Manager...")
+            session_manager = DatabaseSessionManager(get_settings().SUPABASE_DB_URL)
+            app.state.session_manager = session_manager 
+            logger.info("Database session manager initialized")
+        async with asyncio.timeout(20):
+            # Initialize Redis client
             logger.info("Initializing Redis client...")
             app.state.redis_client = await init_redis()
             logger.info("Redis client initialized")
-        async with asyncio.timeout(20):
-            logger.info("Initializing database session manager...")
-            session_manager = DatabaseSessionManager(get_settings().SUPABASE_DB_URL)
-            app.state.session_manager = session_manager
-            if session_manager._engine is None:
-                raise RuntimeError("Session manager engine is not initialized")
-            logger.info("Database session manager initialized")
-            async with session_manager.connect() as conn:
-                logger.info("Creating database tables...")
-                await conn.run_sync(Base.metadata.create_all)
-            logger.info("Database initialized")
-
         yield
     finally:
         # Close connection to database and Redis Connection

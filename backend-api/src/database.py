@@ -6,6 +6,10 @@ from uuid import uuid4
 from fastapi import Request
 from redis.asyncio import Redis
 from sqlalchemy.engine.url import make_url
+from sqlalchemy.pool import AsyncAdaptedQueuePool
+from sqlalchemy.orm import DeclarativeBase
+
+from .settings import get_settings
 
 # Building async engine & sessionmaker
 from sqlalchemy.ext.asyncio import (
@@ -15,10 +19,6 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.pool import AsyncAdaptedQueuePool
-
-from src.settings import get_settings
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -50,9 +50,10 @@ class DatabaseSessionManager:
 
             connect_args = {
                 "ssl": False,
-                "statement_cache_size": 0,  # Disable asyncpg prepared statement cache
+                "statement_cache_size": 0, #Disable asyncpg prepared statement cache
                 "prepared_statement_cache_size": 0,
                 "prepared_statement_name_func": lambda: f"__asyncpg_{uuid4()}__",
+                "timeout": 5,  # seconds
                 "server_settings": {
                     "statement_timeout": "3000",  # Optional: Set statement timeout
                 },
@@ -63,7 +64,9 @@ class DatabaseSessionManager:
         logger.info("Creating async engine")
         self._engine = create_async_engine(
             db_url,
-            poolclass=AsyncAdaptedQueuePool,  # Optional: disables SQLAlchemy connection pool, relying on Supavisor (From SupaBase)
+            poolclass=AsyncAdaptedQueuePool,
+            pool_size=5,
+            max_overflow=10,
             connect_args=connect_args,
             **engine_kwargs,
         )
@@ -109,7 +112,6 @@ class DatabaseSessionManager:
             raise
         finally:
             await session.close()
-
 
 # FastAPI dependency for Endpoints
 async def get_db_session(request: Request) -> AsyncIterator[AsyncSession]:

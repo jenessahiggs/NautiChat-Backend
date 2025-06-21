@@ -50,6 +50,8 @@ class DatabaseSessionManager:
 
             connect_args = {
                 "ssl": False,
+                "statement_cache_size": 0, #Disable asyncpg prepared statement cache
+                "prepared_statement_cache_size": 0,
                 "prepared_statement_name_func": lambda: f"__asyncpg_{uuid4()}__",
                 "timeout": 5,  # seconds
                 "server_settings": {

@@ -2,11 +2,12 @@ import contextlib
 import logging
 from typing import Any, AsyncIterator
 from uuid import uuid4
-from sqlalchemy.pool import AsyncAdaptedQueuePool
 
 from fastapi import Request
 from redis.asyncio import Redis
 from sqlalchemy.engine.url import make_url
+from sqlalchemy.pool import AsyncAdaptedQueuePool
+from sqlalchemy.orm import DeclarativeBase
 
 # Building async engine & sessionmaker
 from sqlalchemy.ext.asyncio import (

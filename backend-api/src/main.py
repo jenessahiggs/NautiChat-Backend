@@ -2,7 +2,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager  # Used to manage async app startup/shutdown events
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware  # Enables frontend-backend communications via CORS
 
 # Need to import the models in the same module that Base is defined to ensure they are registered with SQLAlchemy
@@ -25,28 +25,32 @@ async def lifespan(app: FastAPI):
 
     # Create tables on startup using async engine
     try:
+        # Initialize Redis client
+        async with asyncio.timeout(20):
+            logger.info("Initializing Redis client...")
+            app.state.redis_client = await init_redis()
+            logger.info("Redis client initialized")
         async with asyncio.timeout(20):
             logger.info("Initializing database session manager...")
             session_manager = DatabaseSessionManager(get_settings().SUPABASE_DB_URL)
             app.state.session_manager = session_manager
             if session_manager._engine is None:
                 raise RuntimeError("Session manager engine is not initialized")
+            logger.info("Database session manager initialized")
             async with session_manager.connect() as conn:
+                logger.info("Creating database tables...")
                 await conn.run_sync(Base.metadata.create_all)
-        # Initialize Redis client
-        async with asyncio.timeout(20):
-            logger.info("Initializing Redis client...")
-            app.state.redis_client = await init_redis()
+            logger.info("Database initialized")
 
         yield
     finally:
         # Close connection to database and Redis Connection
-        if hasattr(app.state, "session_manager"):
-            logger.info("Closing database session manager...")
-            await app.state.session_manager.close()
         if hasattr(app.state, "redis_client"):
             logger.info("Closing Redis client...")
             await app.state.redis_client.aclose()
+        if hasattr(app.state, "session_manager"):
+            logger.info("Closing database session manager...")
+            await app.state.session_manager.close()
 
 
 def create_app():
@@ -77,5 +81,11 @@ app = create_app()
 
 
 @app.get("/health")
-async def health_check():
+async def health_check(request: Request):
+    # Check if Database is connected
+    if not hasattr(request.app.state, "session_manager") or request.app.state.session_manager is None:
+        raise HTTPException(status_code=503, detail="Database connection not initialized")
+    # Check if Redis is connected
+    if not hasattr(request.app.state, "redis_client") or request.app.state.redis_client is None:
+        raise HTTPException(status_code=503, detail="Redis connection not initialized")
     return {"status": "ok"}

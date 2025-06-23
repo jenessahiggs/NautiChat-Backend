@@ -2,7 +2,8 @@ from enum import Enum
 from typing import List
 
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.llm.models import Conversation, Message
 
@@ -18,10 +19,11 @@ class MessageContext(BaseModel):
     content: str
 
 
-async def get_context(conversation_id: int, max_words: int, db: Session) -> List[dict]:
+async def get_context(conversation_id: int, max_words: int, db: AsyncSession) -> List[dict]:
     """Return a list of messages for the LLM to use as context"""
 
-    conversation = db.query(Conversation).filter(Conversation.conversation_id == conversation_id).first()
+    conversation_result = await db.execute(select(Conversation).filter(Conversation.conversation_id == conversation_id))
+    conversation = conversation_result.scalar_one_or_none()
     assert conversation, "Invalid conversation id"
 
     # most recent messages first
